@@ -111,26 +111,27 @@ def perguntar_a_ia(prompt_usuario):
         "Responda em português de forma clara, breve e didática (no máximo 3 frases). "
         "Destaque em **negrito** os termos mais importantes."
     )
+
+    # Nomes de modelos suportados para teste em sequência
+    modelos = [
+        'gemini-2.5-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-pro-latest',
+        'gemini-pro'
+    ]
     
-    # 1. Tenta consulta à API Gemini
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
-        if response and response.text:
-            return response.text
-    except Exception as e:
-        erro_api = str(e)
-    
-    # 2. Respostas locais de backup para evitar falhas durante a apresentação
-    p_lower = prompt_usuario.lower()
-    if "trânsito" in p_lower or "transito" in p_lower:
-        return "O **trânsito** é a movimentação de veículos e pedestres nas vias públicas. A **Inteligência Artificial** ajuda a organizá-lo analisando rotas e reduzindo engarrafamentos em tempo real!"
-    elif "música" in p_lower or "musica" in p_lower:
-        return "A **música** é uma expressão artística de sons e ritmos. A IA analisa o seu **gosto musical** para recomendar faixas perfeitas para o seu dia!"
-    elif "ia" in p_lower or "inteligencia artificial" in p_lower:
-        return "A **Inteligência Artificial** é a capacidade de sistemas simularem o **raciocínio humano**, aprendendo com dados para resolver problemas do cotidiano."
-    
-    return f"Não foi possível conectar ao Gemini no momento. Detalhes: {erro_api if 'erro_api' in locals() else 'Erro de conexão'}"
+    ultimo_erro = ""
+    for nome_modelo in modelos:
+        try:
+            model = genai.GenerativeModel(nome_modelo)
+            response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
+            if response and response.text:
+                return response.text
+        except Exception as e:
+            ultimo_erro = str(e)
+            continue
+            
+    return f"Erro ao acessar os modelos da IA. Detalhe: {ultimo_erro}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
