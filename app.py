@@ -104,19 +104,29 @@ if "messages" not in st.session_state:
 def perguntar_a_ia(prompt_usuario):
     if not client:
         return "⚠️ A chave da API do Gemini não foi configurada nos Secrets."
-    try:
-        prompt_sistema = (
-            "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. "
-            "Responda em português de forma clara, breve e didática (no máximo 3 frases). "
-            "Destaque em **negrito** os termos mais importantes."
-        )
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
-        )
-        return response.text
-    except Exception as e:
-        return f"Erro ao conectar com o Gemini: {str(e)}"
+    
+    # Testa os dois nomes oficiais de modelo da Google
+    modelos_para_testar = ['gemini-1.5-flash', 'gemini-1.5-pro']
+    
+    prompt_sistema = (
+        "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. "
+        "Responda em português de forma clara, breve e didática (no máximo 3 frases). "
+        "Destaque em **negrito** os termos mais importantes."
+    )
+    
+    ultimo_erro = ""
+    for modelo in modelos_para_testar:
+        try:
+            response = client.models.generate_content(
+                model=modelo,
+                contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
+            )
+            return response.text
+        except Exception as e:
+            ultimo_erro = str(e)
+            continue
+
+    return f"Erro ao conectar com o Gemini: {ultimo_erro}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
