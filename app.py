@@ -4,7 +4,7 @@ from google import genai
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Procura a chave nos Secrets do Streamlit (tenta "GEMINI_API_KEY" ou "gemini_api_key")
+# Procura a chave nos Secrets do Streamlit
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
 
 # Estilização CSS
@@ -112,12 +112,11 @@ def perguntar_a_ia(prompt_usuario):
     )
 
     try:
-        # Passa explicitamente a chave para o cliente
         client = genai.Client(api_key=api_key)
         
-        # Chama a versão de produção estável
+        # Chama a versão recomendada pela API do Gemini
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
         )
         if response and response.text:
