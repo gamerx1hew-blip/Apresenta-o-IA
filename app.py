@@ -113,26 +113,25 @@ def perguntar_a_ia(prompt_usuario):
         "Destaque em **negrito** os termos mais importantes."
     )
 
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
-        )
-        if response and response.text:
-            return response.text
-    except Exception as e:
-        # Fallback para o modelo gemini-2.5-pro se o flash falhar
+    modelos = [
+        'gemini-3.1-pro-preview',
+        'gemini-2.5-flash'
+    ]
+    
+    ultimo_erro = ""
+    for m in modelos:
         try:
             response = client.models.generate_content(
-                model='gemini-2.5-pro',
+                model=m,
                 contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
             )
             if response and response.text:
                 return response.text
-        except Exception as ex:
-            return f"Erro ao acessar a API do Gemini: {str(ex)}"
+        except Exception as e:
+            ultimo_erro = str(e)
+            continue
             
-    return "Não foi possível obter resposta da IA no momento."
+    return f"Erro ao acessar a API do Gemini: {ultimo_erro}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
