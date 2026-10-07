@@ -3,26 +3,31 @@ import time
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
+# Estilo Visual Futurista
 st.markdown("""
     <style>
-    .main {
-        background-color: #0E1117;
-    }
-    stApp {
-        background-color: #0E1117;
-    }
+    .main { background-color: #0E1117; }
+    stApp { background-color: #0E1117; }
     h1 {
         color: #00FFA3 !important;
         text-align: center;
         font-family: 'Courier New', Courier, monospace;
+        margin-bottom: 0px;
+    }
+    .status-bar {
+        text-align: center;
+        color: #888;
+        font-size: 0.8rem;
+        margin-bottom: 20px;
     }
     .stButton>button {
         background-color: #1F2937;
         color: #00FFA3;
         border: 1px solid #00FFA3;
-        border-radius: 10px;
+        border-radius: 8px;
         font-weight: bold;
         width: 100%;
+        margin-bottom: 5px;
     }
     .stButton>button:hover {
         background-color: #00FFA3;
@@ -32,6 +37,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🤖 ASSISTENTE DE IA")
+st.markdown("<div class='status-bar'>🔴 AO VIVO | Status: Sistema Operacional</div>", unsafe_allow_html=True)
 
 RESPOSTAS = {
     "trânsito": {
@@ -68,56 +74,73 @@ RESPOSTAS = {
     }
 }
 
-# Função geradora para criar o efeito de escrita estilo IA (palavra por palavra)
 def stream_texto(texto):
     for palavra in texto.split(" "):
         yield palavra + " "
-        time.sleep(0.06)
+        time.sleep(0.05)
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "Olá! Sou o assistente virtual da apresentação. Faça uma pergunta sobre trânsito, música, voz, programação ou o futuro do trabalho!",
+            "content": "Olá! Sou o assistente virtual da apresentação. Escolha um tema abaixo ou faça sua pergunta!",
             "img": None
         }
     ]
+
+# Botões de Atalho Rápido no Topo
+st.write("**Atalhos de Pergunta:**")
+col1, col2, col3 = st.columns(3)
+
+pergunta_clicada = None
+with col1:
+    if st.button("🚦 Trânsito"): pergunta_clicada = "IA, como você ajuda no trânsito?"
+    if st.button("💻 Programação"): pergunta_clicada = "IA, como você ajuda na programação?"
+with col2:
+    if st.button("🎵 Música"): pergunta_clicada = "IA, como você recomenda música?"
+    if st.button("🛡️ Impulsos"): pergunta_clicada = "IA, como combate fazendas de impulsos?"
+with col3:
+    if st.button("🎙️ Voz"): pergunta_clicada = "IA, como funciona assistente de voz?"
+    if st.button("👥 Futuro"): pergunta_clicada = "IA, você vai substituir os humanos?"
 
 if st.button("🔄 Resetar Apresentação"):
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "Olá! Sou o assistente virtual da apresentação. Faça uma pergunta sobre trânsito, música, voz, programação ou o futuro do trabalho!",
+            "content": "Olá! Sou o assistente virtual da apresentação. Escolha um tema abaixo ou faça sua pergunta!",
             "img": None
         }
     ]
     st.rerun()
 
-# Exibe o histórico de mensagens já guardadas
+# Exibe histórico
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
         if "img" in message and message["img"]:
             st.image(message["img"], use_container_width=True)
 
-# Processa a nova pergunta do utilizador
-if prompt_usuario := st.chat_input("Digite sua pergunta (ou 'reset')..."):
-    if prompt_usuario.strip().lower() == "reset":
+# Captura entrada (seja digitada ou via botão de atalho)
+prompt_input = st.chat_input("Digite sua pergunta (ou 'reset')...")
+prompt_final = pergunta_clicada or prompt_input
+
+if prompt_final:
+    if prompt_final.strip().lower() == "reset":
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": "Olá! Sou o assistente virtual da apresentação. Faça uma pergunta sobre trânsito, música, voz, programação ou o futuro do trabalho!",
+                "content": "Olá! Sou o assistente virtual da apresentação. Escolha um tema abaixo ou faça sua pergunta!",
                 "img": None
             }
         ]
         st.rerun()
     else:
-        st.session_state.messages.append({"role": "user", "content": prompt_usuario, "img": None})
+        st.session_state.messages.append({"role": "user", "content": prompt_final, "img": None})
         with st.chat_message("user"):
-            st.write(prompt_usuario)
+            st.write(prompt_final)
 
         with st.chat_message("assistant"):
-            texto_pergunta = prompt_usuario.lower()
+            texto_pergunta = prompt_final.lower()
             resposta_texto = "Não entendi bem a pergunta. Pode refazer usando palavras como trânsito, música, voz, programação, impulsos ou substituir?"
             imagem_url = None
             
@@ -127,13 +150,11 @@ if prompt_usuario := st.chat_input("Digite sua pergunta (ou 'reset')..."):
                     imagem_url = dados["imagem"]
                     break
             
-            # Efeito de escrita palavra por palavra igual ao ChatGPT/Gemini
             st.write_stream(stream_texto(resposta_texto))
             
-            # Animação e delay para simular a criação da imagem pela IA
             if imagem_url:
                 with st.spinner("🎨 Gerando imagem ilustrativa com IA..."):
-                    time.sleep(1.8) # Delay realista
+                    time.sleep(1.5)
                 st.image(imagem_url, use_container_width=True)
             
             st.session_state.messages.append({
@@ -141,3 +162,4 @@ if prompt_usuario := st.chat_input("Digite sua pergunta (ou 'reset')..."):
                 "content": resposta_texto,
                 "img": imagem_url
             })
+            st.rerun()
