@@ -1,11 +1,11 @@
 import streamlit as st
 from openai import OpenAI
-import time
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Inicialização do cliente OpenAI usando a chave dos Secrets
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# Busca a chave nos secrets com fallback seguro
+api_key = st.secrets.get("OPENAI_API_KEY", None)
+client = OpenAI(api_key=api_key) if api_key else None
 
 # Estilização CSS do chat e botões
 st.markdown("""
@@ -102,6 +102,8 @@ if "messages" not in st.session_state:
     ]
 
 def perguntar_a_ia(prompt_usuario):
+    if not client:
+        return "⚠️ A chave da API não foi encontrada nas configurações de Secrets do Streamlit."
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -116,7 +118,7 @@ def perguntar_a_ia(prompt_usuario):
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"Erro na API: {str(e)}"
+        return f"Erro ao conectar com a IA: {str(e)}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
@@ -128,7 +130,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    # Caso seja a pergunta final reflexiva
+    # Pergunta reflexiva final
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo"]):
         resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
         imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
@@ -136,7 +138,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
     else:
         topico_encontrado_key = chave_topico
         
-        # Verifica se corresponde exatamente ao clique do botão
         if not topico_encontrado_key:
             for key, item in TODOS_TOPICOS.items():
                 if any(gatilho in pergunta_clean for gatilho in item["gatilhos"]):
@@ -152,7 +153,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
-            # Qualquer pergunta livre vai direto para a IA responder na hora!
+            # Pergunta livre que chama a API
             resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
             opcoes_novas = opcoes_anteriores
@@ -164,7 +165,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         "opcoes_restantes": opcoes_novas
     })
 
-# Exibição do histórico de mensagens
+# Exibição das mensagens
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
@@ -182,7 +183,6 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
-# Campo do chat
 if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..."):
     if prompt_usuario.strip().lower() == "reset":
         st.session_state.messages = [
