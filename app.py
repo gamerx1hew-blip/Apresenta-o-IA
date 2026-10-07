@@ -2,12 +2,12 @@ import os
 import streamlit as st
 from google import genai
 
-st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Assistente Inteligente", page_icon="🤖", layout="centered")
 
 # Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
 
-# Estilização CSS (incluindo limite de altura para as imagens não ficarem demasiado compridas)
+# Estilização CSS
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
@@ -37,7 +37,7 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #00FFA3; color: #0E1117; }
     
-    /* Controla o tamanho das imagens para não ocuparem o ecrã todo */
+    /* Controla o tamanho das imagens */
     div[data-testid="stImage"] img {
         max-height: 250px !important;
         object-fit: cover !important;
@@ -50,40 +50,39 @@ col_titulo, col_botao = st.columns([0.85, 0.15])
 
 TODOS_TOPICOS = {
     "transito": {
-        "label": "🚗 Como te ajudo no trânsito?",
-        "gatilhos": ["como te ajudo no trânsito", "como você me ajuda no trânsito", "trânsito no dia a dia"],
+        "label": "🚗 Como a IA ajuda no trânsito?",
+        "gatilhos": ["como a ia ajuda no trânsito", "como a ia ajuda no transito", "trânsito", "transito"],
         "texto": "Eu analiso o **tráfego de milhares de motoristas** em tempo real. Se encontro um engarrafamento, **recalculo a rota na hora** para você chegar mais rápido e sem estresse.",
         "imagem": "https://images.unsplash.com/photo-1548345680-f5475ea5df84?w=800"
     },
     "musica": {
-        "label": "🎵 Como crio playlists de música?",
-        "gatilhos": ["como crio playlists", "como você cria playlists", "playlists de música"],
+        "label": "🎵 Como a IA recomenda músicas?",
+        "gatilhos": ["como a ia recomenda músicas", "como a ia recomenda musicas", "música", "playlists"],
         "texto": "Eu meço o seu **histórico de reprodução**, o ritmo das músicas que você mais escuta e o horário do dia para montar **playlists personalizadas** que combinam com o seu momento.",
         "imagem": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800"
     },
     "voz": {
-        "label": "🗣️ Como entendo comandos de voz?",
-        "gatilhos": ["como entendo comandos de voz", "como você entende comandos de voz"],
+        "label": "🎙️ Como a IA entende a voz humana?",
+        "gatilhos": ["como a ia entende a voz humana", "como a ia entende a voz", "voz humana", "comando de voz"],
         "texto": "Eu processo o **som da sua voz**, entendo o comando em **milissegundos** e me conecto aos aparelhos da casa para tocar músicas, acender luzes ou programar alarmes.",
-        # Nova URL da imagem na horizontal (formato paisagem)
         "imagem": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800"
     },
-    "programacao": {
-        "label": "💻 Como automatizo programação e máquinas?",
-        "gatilhos": ["como automatizo programação", "como você automatiza a programação"],
+    "automacao": {
+        "label": "🤖 Como a IA automatiza tarefas?",
+        "gatilhos": ["como a ia automatiza tarefas", "como a ia automatiza", "automatiza tarefas", "programação e máquinas"],
         "texto": "Eu assumo a **digitação de códigos repetitivos**, encontro erros no sistema e **comando máquinas** para executarem movimentos precisos sem cansar ou errar.",
         "imagem": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800"
     },
     "fraudes": {
-        "label": "🛡️ Como detecto fraudes e cliques falsos?",
-        "gatilhos": ["como detecto fraudes", "como a ia detecta impulsos"],
+        "label": "🛡️ Como a IA detecta fraudes?",
+        "gatilhos": ["como a ia detecta fraudes", "como a ia detecta fraude", "fraudes", "cliques falsos"],
         "texto": "Eu analiso o **comportamento das redes sociais**. Quando vejo milhares de curtidas vindas de perfis falsos em poucos segundos, **bloqueio a ação** para evitar fraudes.",
         "imagem": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800"
     }
 }
 
 with col_titulo:
-    st.title("🤖 ASSISTENTE DE IA")
+    st.title("🤖 ASSISTENTE INTELIGENTE")
 
 with col_botao:
     st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
@@ -121,7 +120,6 @@ def perguntar_a_ia(prompt_usuario):
 
     try:
         client = genai.Client(api_key=api_key)
-        
         response = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
