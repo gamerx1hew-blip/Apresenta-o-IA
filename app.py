@@ -38,3 +38,4 @@ RESPOSTAS = {
         "imagem": "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800" # Pessoas e tecnologia a trabalharem juntas em equipa
     }
 }
+
