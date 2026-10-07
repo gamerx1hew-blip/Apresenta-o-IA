@@ -3,7 +3,7 @@ import time
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Estilização CSS para o tema escuro, balões e botões clicáveis de sugestão
+# Estilização CSS para o tema escuro e botões estilo balão
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
@@ -51,17 +51,19 @@ st.markdown("""
         border-left: 4px solid #00FFA3;
     }
 
-    /* Estilo dos botões de sugestão/balão clicável */
+    /* Estilo dos botões/balões clicáveis de opção */
     .stButton>button {
         background-color: #161B22;
         color: #00FFA3;
         border: 1px solid #00FFA3;
         border-radius: 20px;
-        padding: 8px 16px;
-        font-size: 14px;
+        padding: 8px 14px;
+        font-size: 13px;
         font-weight: bold;
         transition: all 0.3s ease;
-        margin-top: 5px;
+        margin-top: 4px;
+        margin-bottom: 4px;
+        width: 100%;
     }
     .stButton>button:hover {
         background-color: #00FFA3;
@@ -73,6 +75,40 @@ st.markdown("""
 # Topo com título e botão de reset
 col_titulo, col_botao = st.columns([0.85, 0.15])
 
+# Lista completa dos tópicos iniciais
+TODOS_TOPICOS = {
+    "transito": {
+        "label": "🚗 Como te ajudo no trânsito?",
+        "gatilhos": ["trânsito", "transito", "gps", "rota", "carro", "motorista", "engarrafamento", "waze"],
+        "texto": "Eu analiso o **tráfego de milhares de motoristas** em tempo real. Se encontro um engarrafamento, **recalculo a rota na hora** para você chegar mais rápido e sem estresse.",
+        "imagem": "https://images.unsplash.com/photo-1548345680-f5475ea5df84?w=800"
+    },
+    "musica": {
+        "label": "🎵 Como crio playlists de música?",
+        "gatilhos": ["música", "musica", "playlist", "som", "spotify", "ritmo"],
+        "texto": "Eu meço o seu **histórico de reprodução**, o ritmo das músicas que você mais escuta e o horário do dia para montar **playlists personalizadas** que combinam com o seu momento.",
+        "imagem": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800"
+    },
+    "voz": {
+        "label": "🗣️ Como entendo comandos de voz?",
+        "gatilhos": ["voz", "falar", "comando", "alexa", "siri", "assistente", "casa"],
+        "texto": "Eu processo o **som da sua voz**, entendo o comando em **milissegundos** e me conecto aos aparelhos da casa para tocar músicas, acender luzes ou programar alarmes.",
+        "imagem": "https://images.unsplash.com/photo-1543512214-318c7553f230?w=800"
+    },
+    "programacao": {
+        "label": "💻 Como automatizo programação e máquinas?",
+        "gatilhos": ["programação", "programacao", "código", "codigo", "sistema", "máquina", "maquina", "robô", "robo"],
+        "texto": "Eu assumo a **digitação de códigos repetitivos**, encontro erros no sistema e **comando máquinas** para executarem movimentos precisos sem cansar ou errar.",
+        "imagem": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800"
+    },
+    "fraudes": {
+        "label": "🛡️ Como detecto fraudes e cliques falsos?",
+        "gatilhos": ["impulso", "clique", "fraude", "perfil", "fake", "redes", "social", "curtida"],
+        "texto": "Eu analiso o **comportamento das redes sociais**. Quando vejo milhares de curtidas vindas de perfis falsos em poucos segundos, **bloqueio a ação** para evitar fraudes.",
+        "imagem": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800"
+    }
+}
+
 with col_titulo:
     st.title("🤖 ASSISTENTE DE IA")
 
@@ -82,124 +118,101 @@ with col_botao:
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": "Olá! Sou o **assistente virtual** da apresentação. Por qual tópico você prefere começar?",
+                "content": "Olá! Sou o **assistente virtual** da apresentação. Sobre qual assunto você gostaria de saber primeiro?",
                 "img": None,
-                "proximo_botao": "Como você me ajuda no trânsito?"
+                "opcoes_restantes": list(TODOS_TOPICOS.keys())
             }
         ]
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Definição do fluxo do roteiro em sequência
-ROTEIRO = [
-    {
-        "gatilhos": ["trânsito", "transito", "gps", "rota", "carro", "motorista", "engarrafamento", "waze"],
-        "texto": "Eu analiso o **tráfego de milhares de motoristas** em tempo real. Se encontro um engarrafamento, **recalculo a rota na hora** para você chegar mais rápido e sem estresse.",
-        "imagem": "https://images.unsplash.com/photo-1548345680-f5475ea5df84?w=800",
-        "proximo_botao": "Como você cria playlists de música?"
-    },
-    {
-        "gatilhos": ["música", "musica", "playlist", "som", "spotify", "ritmo"],
-        "texto": "Eu meço o seu **histórico de reprodução**, o ritmo das músicas que você mais escuta e o horário do dia para montar **playlists personalizadas** que combinam com o seu momento.",
-        "imagem": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800",
-        "proximo_botao": "Como você entende comandos de voz?"
-    },
-    {
-        "gatilhos": ["voz", "falar", "comando", "alexa", "siri", "assistente", "casa"],
-        "texto": "Eu processo o **som da sua voz**, entendo o comando em **milissegundos** e me conecto aos aparelhos da casa para tocar músicas, acender luzes ou programar alarmes.",
-        "imagem": "https://images.unsplash.com/photo-1543512214-318c7553f230?w=800",
-        "proximo_botao": "Como você automatiza a programação e máquinas?"
-    },
-    {
-        "gatilhos": ["programação", "programacao", "código", "codigo", "sistema", "máquina", "maquina", "robô", "robo"],
-        "texto": "Eu assumo a **digitação de códigos repetitivos**, encontro erros no sistema e **comando máquinas** para executarem movimentos precisos sem cansar ou errar.",
-        "imagem": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800",
-        "proximo_botao": "Como a IA detecta impulsos e cliques falsos nas redes?"
-    },
-    {
-        "gatilhos": ["impulso", "clique", "fraude", "perfil", "fake", "redes", "social", "curtida"],
-        "texto": "Eu analiso o **comportamento das redes sociais**. Quando vejo milhares de curtidas vindas de perfis falsos em poucos segundos, **bloqueio a ação** para evitar fraudes.",
-        "imagem": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800",
-        # Pergunta da IA provocando a plateia no final do roteiro!
-        "proximo_botao": "E afinal: você acha que a IA vai substituir os humanos?"
-    }
-]
-
-def stream_texto(texto):
-    for palavra in texto.split(" "):
-        yield palavra + " "
-        time.sleep(0.04)
-
+# Inicialização da sessão
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "Olá! Sou o **assistente virtual** da apresentação. Clique no botão abaixo para começarmos!",
+            "content": "Olá! Sou o **assistente virtual** da apresentação. Sobre qual assunto você gostaria de saber primeiro?",
             "img": None,
-            "proximo_botao": "Como você me ajuda no trânsito?"
+            "opcoes_restantes": list(TODOS_TOPICOS.keys())
         }
     ]
 
-# Processa a pergunta feita pelo usuário ou enviada pelo botão
-def processar_pergunta(pergunta_usuario):
+# Função para processar perguntas e gerenciar opções restantes
+def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
-    
     pergunta_clean = pergunta_usuario.lower()
-    resposta_texto = None
-    imagem_url = None
-    proximo_botao = None
+    
+    # Identifica as opções restantes anteriores
+    opcoes_anteriores = []
+    for m in reversed(st.session_state.messages[:-1]):
+        if m["role"] == "assistant" and "opcoes_restantes" in m:
+            opcoes_anteriores = m["opcoes_restantes"].copy()
+            break
 
-    # Verifica se é uma opinião sobre a IA substituir os humanos
-    if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "com certeza"]):
-        resposta_texto = "Não importa a sua resposta, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
+    # Caso seja a resposta final sobre a IA substituir os humanos
+    if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "com certeza", "concordo"]):
+        resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
         imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
-        proximo_botao = None
+        opcoes_novas = []
     else:
-        for item in ROTEIRO:
-            for gatilho in item["gatilhos"]:
-                if gatilho in pergunta_clean:
-                    resposta_texto = item["texto"]
-                    imagem_url = item["imagem"]
-                    proximo_botao = item["proximo_botao"]
+        topico_encontrado_key = chave_topico
+        
+        # Tenta identificar o tópico por palavra-chave caso não venha pelo clique direto do botão
+        if not topico_encontrado_key:
+            for key, item in TODOS_TOPICOS.items():
+                if any(gatilho in pergunta_clean for gatilho in item["gatilhos"]):
+                    topico_encontrado_key = key
                     break
-            if resposta_texto:
-                break
 
-    if not resposta_texto:
-        resposta_texto = "Sou um assistente focado em **Inteligência Artificial e Automação no cotidiano**. Posso responder sobre trânsito, músicas, voz, programação, redes sociais ou o futuro do trabalho!"
-        proximo_botao = "Como você me ajuda no trânsito?"
+        if topico_encontrado_key and topico_encontrado_key in TODOS_TOPICOS:
+            dados = TODOS_TOPICOS[topico_encontrado_key]
+            resposta_texto = dados["texto"]
+            imagem_url = dados["imagem"]
+            opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
+            
+            # Se não restam mais opções dos botões, faz a pergunta grifada no texto!
+            if len(opcoes_novas) == 0:
+                resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
+        else:
+            resposta_texto = "Sou um assistente focado em **Inteligência Artificial e Automação no cotidiano**. Escolha um dos tópicos disponíveis ou faça sua pergunta!"
+            imagem_url = None
+            opcoes_novas = opcoes_anteriores
 
     st.session_state.messages.append({
         "role": "assistant",
         "content": resposta_texto,
         "img": imagem_url,
-        "proximo_botao": proximo_botao
+        "opcoes_restantes": opcoes_novas
     })
 
-# Exibe o histórico do chat
+# Exibe o histórico de mensagens
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
         if "img" in message and message["img"]:
             st.image(message["img"], use_container_width=True)
         
-        # Exibe o balão/botão clicável apenas no final da última resposta da IA
+        # Exibe os balões/botões restantes APENAS na última resposta da IA
         if message["role"] == "assistant" and i == len(st.session_state.messages) - 1:
-            if message.get("proximo_botao"):
-                st.write("")
-                if st.button(f"👉 {message['proximo_botao']}", key=f"btn_{i}"):
-                    processar_pergunta(message["proximo_botao"])
-                    st.rerun()
+            opcoes = message.get("opcoes_restantes", [])
+            if opcoes:
+                st.write("---")
+                st.caption("👇 **Escolha o próximo assunto:**")
+                for key in opcoes:
+                    label_botao = TODOS_TOPICOS[key]["label"]
+                    if st.button(label_botao, key=f"btn_{i}_{key}"):
+                        processar_pergunta(label_botao, chave_topico=key)
+                        st.rerun()
 
-# Campo de entrada de texto livre para interação
+# Campo para resposta/pergunta digitada no chat
 if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..."):
     if prompt_usuario.strip().lower() == "reset":
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": "Olá! Sou o **assistente virtual** da apresentação. Clique no botão abaixo para começarmos!",
+                "content": "Olá! Sou o **assistente virtual** da apresentação. Sobre qual assunto você gostaria de saber primeiro?",
                 "img": None,
-                "proximo_botao": "Como você me ajuda no trânsito?"
+                "opcoes_restantes": list(TODOS_TOPICOS.keys())
             }
         ]
         st.rerun()
