@@ -1,11 +1,11 @@
 import streamlit as st
-from openai import OpenAI
+from google import genai
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Busca a chave nos secrets com fallback seguro
-api_key = st.secrets.get("OPENAI_API_KEY", None)
-client = OpenAI(api_key=api_key) if api_key else None
+# Busca a chave do Gemini nos Secrets
+api_key = st.secrets.get("GEMINI_API_KEY", None)
+client = genai.Client(api_key=api_key) if api_key else None
 
 # Estilização CSS do chat e botões
 st.markdown("""
@@ -103,22 +103,20 @@ if "messages" not in st.session_state:
 
 def perguntar_a_ia(prompt_usuario):
     if not client:
-        return "⚠️ A chave da API não foi encontrada nas configurações de Secrets do Streamlit."
+        return "⚠️ A chave da API do Gemini não foi configurada nos Secrets."
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. Responda em português de forma clara, breve e didática (no máximo 3 frases). Destaque em **negrito** os termos mais importantes."
-                },
-                {"role": "user", "content": prompt_usuario}
-            ],
-            max_tokens=150
+        prompt_sistema = (
+            "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. "
+            "Responda em português de forma clara, breve e didática (no máximo 3 frases). "
+            "Destaque em **negrito** os termos mais importantes."
         )
-        return response.choices[0].message.content
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
+        )
+        return response.text
     except Exception as e:
-        return f"Erro ao conectar com a IA: {str(e)}"
+        return f"Erro ao conectar com o Gemini: {str(e)}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
@@ -153,7 +151,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
-            # Pergunta livre que chama a API
+            # Pergunta livre enviada para o Gemini
             resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
             opcoes_novas = opcoes_anteriores
