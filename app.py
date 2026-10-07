@@ -111,7 +111,7 @@ def perguntar_a_ia(prompt_usuario):
             "Destaque em **negrito** os termos mais importantes."
         )
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-flash',
             contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
         )
         return response.text
