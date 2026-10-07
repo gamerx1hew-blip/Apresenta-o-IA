@@ -1,12 +1,13 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Configura a chave do Gemini
+# Configura o cliente do Gemini com a nova SDK
 api_key = st.secrets.get("GEMINI_API_KEY", None)
+client = None
 if api_key:
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
 # Estilização CSS do chat e botões
 st.markdown("""
@@ -103,7 +104,7 @@ if "messages" not in st.session_state:
     ]
 
 def perguntar_a_ia(prompt_usuario):
-    if not api_key:
+    if not client:
         return "⚠️ A chave da API do Gemini não foi configurada nos Secrets do Streamlit."
     
     prompt_sistema = (
@@ -112,26 +113,26 @@ def perguntar_a_ia(prompt_usuario):
         "Destaque em **negrito** os termos mais importantes."
     )
 
-    # Nomes de modelos suportados para teste em sequência
-    modelos = [
-        'gemini-2.5-flash',
-        'gemini-1.5-flash-latest',
-        'gemini-1.5-pro-latest',
-        'gemini-pro'
-    ]
-    
-    ultimo_erro = ""
-    for nome_modelo in modelos:
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
+        )
+        if response and response.text:
+            return response.text
+    except Exception as e:
+        # Fallback para o modelo gemini-2.5-pro se o flash falhar
         try:
-            model = genai.GenerativeModel(nome_modelo)
-            response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
+            response = client.models.generate_content(
+                model='gemini-2.5-pro',
+                contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
+            )
             if response and response.text:
                 return response.text
-        except Exception as e:
-            ultimo_erro = str(e)
-            continue
+        except Exception as ex:
+            return f"Erro ao acessar a API do Gemini: {str(ex)}"
             
-    return f"Erro ao acessar os modelos da IA. Detalhe: {ultimo_erro}"
+    return "Não foi possível obter resposta da IA no momento."
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
