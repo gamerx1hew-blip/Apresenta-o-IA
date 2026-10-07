@@ -113,23 +113,12 @@ def perguntar_a_ia(prompt_usuario):
     )
     
     try:
-        # Busca automaticamente os modelos que suportam geração de texto na sua conta
-        modelos_disponiveis = [
-            m.name for m in genai.list_models() 
-            if 'generateContent' in m.supported_generation_methods
-        ]
-        
-        if modelos_disponiveis:
-            # Usa o primeiro modelo válido retornado pela API
-            modelo_escolhido = modelos_disponiveis[0]
-            model = genai.GenerativeModel(modelo_escolhido)
-            response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
-            return response.text
-        else:
-            return "Como IA, posso **analisar dados e responder dúvidas**, mas atualmente a conexão direta precisa ser configurada com um modelo ativo."
-            
+        # Utiliza diretamente o modelo especificado pela própria mensagem da API
+        model = genai.GenerativeModel('gemini-3.8-flash')
+        response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
+        return response.text
     except Exception as e:
-        return f"Modelos disponíveis listados: {str(e)}"
+        return f"Erro ao conectar com o Gemini: {str(e)}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
