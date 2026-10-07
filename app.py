@@ -1,3 +1,9 @@
+import streamlit as st
+import time
+
+st.title("🤖 Assistente de IA - Apresentação")
+
+# Dicionário com textos e imagens correspondentes a cada tema
 RESPOSTAS = {
     "trânsito": {
         "texto": "Eu analiso o tráfego de milhares de motoristas em tempo real. Se encontro um engarrafamento, recalculando a rota na hora para você chegar mais rápido e sem estresse.",
