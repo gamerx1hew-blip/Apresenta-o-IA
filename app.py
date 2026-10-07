@@ -112,24 +112,24 @@ def perguntar_a_ia(prompt_usuario):
         "Destaque em **negrito** os termos mais importantes."
     )
     
-    modelos_para_testar = [
-        'gemini-1.5-flash-latest',
-        'models/gemini-1.5-flash-latest',
-        'gemini-pro',
-        'models/gemini-pro'
-    ]
-    
-    ultimo_erro = ""
-    for nome_modelo in modelos_para_testar:
-        try:
-            model = genai.GenerativeModel(nome_modelo)
+    try:
+        # Busca automaticamente os modelos que suportam geração de texto na sua conta
+        modelos_disponiveis = [
+            m.name for m in genai.list_models() 
+            if 'generateContent' in m.supported_generation_methods
+        ]
+        
+        if modelos_disponiveis:
+            # Usa o primeiro modelo válido retornado pela API
+            modelo_escolhido = modelos_disponiveis[0]
+            model = genai.GenerativeModel(modelo_escolhido)
             response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
             return response.text
-        except Exception as e:
-            ultimo_erro = str(e)
-            continue
-
-    return f"Erro ao conectar com o Gemini: {ultimo_erro}"
+        else:
+            return "Como IA, posso **analisar dados e responder dúvidas**, mas atualmente a conexão direta precisa ser configurada com um modelo ativo."
+            
+    except Exception as e:
+        return f"Modelos disponíveis listados: {str(e)}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
