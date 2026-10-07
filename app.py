@@ -112,12 +112,24 @@ def perguntar_a_ia(prompt_usuario):
         "Destaque em **negrito** os termos mais importantes."
     )
     
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
-        return response.text
-    except Exception as e:
-        return f"Erro ao conectar com o Gemini: {str(e)}"
+    modelos_para_testar = [
+        'gemini-1.5-flash-latest',
+        'models/gemini-1.5-flash-latest',
+        'gemini-pro',
+        'models/gemini-pro'
+    ]
+    
+    ultimo_erro = ""
+    for nome_modelo in modelos_para_testar:
+        try:
+            model = genai.GenerativeModel(nome_modelo)
+            response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
+            return response.text
+        except Exception as e:
+            ultimo_erro = str(e)
+            continue
+
+    return f"Erro ao conectar com o Gemini: {ultimo_erro}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
@@ -129,7 +141,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    # Pergunta reflexiva final
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo"]):
         resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
         imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
@@ -152,7 +163,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
-            # Pergunta livre enviada para o Gemini
             resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
             opcoes_novas = opcoes_anteriores
@@ -164,7 +174,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         "opcoes_restantes": opcoes_novas
     })
 
-# Exibição das mensagens
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
