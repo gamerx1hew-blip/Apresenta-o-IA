@@ -1,11 +1,36 @@
 import os
 import streamlit as st
+import streamlit.components.v1 as components
 from google import genai
 
 st.set_page_config(page_title="Assistente Inteligente", page_icon="🤖", layout="centered")
 
 # Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
+
+# Função de Leitura de Voz (Text-to-Speech via JavaScript)
+def falar_texto(texto):
+    if texto:
+        # Limpa caracteres de formatação Markdown para a voz ler com clareza
+        texto_limpo = (
+            texto.replace("**", "")
+                 .replace("\n", " ")
+                 .replace("---", "")
+                 .replace("'", "\\'")
+                 .replace('"', '\\"')
+        )
+        js_code = f"""
+            <script>
+                if ('speechSynthesis' in window) {{
+                    window.speechSynthesis.cancel();
+                    var msg = new SpeechSynthesisUtterance('{texto_limpo}');
+                    msg.lang = 'pt-BR';
+                    msg.rate = 1.0;
+                    window.speechSynthesis.speak(msg);
+                }}
+            </script>
+        """
+        components.html(js_code, height=0)
 
 # Estilização CSS
 st.markdown("""
@@ -48,7 +73,6 @@ st.markdown("""
 
 col_titulo, col_botao = st.columns([0.85, 0.15])
 
-# Tópicos com textos ajustados para linguagem explicativa/científica
 TODOS_TOPICOS = {
     "transito": {
         "label": "🚗 Como a IA ajuda no trânsito?",
@@ -142,7 +166,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    # Resposta rica e reflexiva para o debate final sobre o futuro dos empregos
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
         resposta_texto = (
             "É uma excelente reflexão! A IA já automatiza tarefas operacionais e repetitivas, "
@@ -166,7 +189,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             imagem_url = dados["imagem"]
             opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
             
-            # Quando apresentar todos os 5 tópicos, puxa a pergunta final provocativa
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
@@ -181,6 +203,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         "opcoes_restantes": opcoes_novas
     })
 
+# Renderiza as mensagens anteriores no ecrã
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
@@ -197,6 +220,10 @@ for i, message in enumerate(st.session_state.messages):
                     if st.button(label_botao, key=f"btn_{i}_{key}"):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
+
+# Ativa a fala automática apenas para a última resposta do assistente
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
+    falar_texto(st.session_state.messages[-1]["content"])
 
 if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..."):
     if prompt_usuario.strip().lower() == "reset":
