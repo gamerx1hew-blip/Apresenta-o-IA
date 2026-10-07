@@ -1,11 +1,12 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Busca a chave do Gemini nos Secrets
+# Configura a chave do Gemini
 api_key = st.secrets.get("GEMINI_API_KEY", None)
-client = genai.Client(api_key=api_key) if api_key else None
+if api_key:
+    genai.configure(api_key=api_key)
 
 # Estilização CSS do chat e botões
 st.markdown("""
@@ -102,11 +103,8 @@ if "messages" not in st.session_state:
     ]
 
 def perguntar_a_ia(prompt_usuario):
-    if not client:
+    if not api_key:
         return "⚠️ A chave da API do Gemini não foi configurada nos Secrets."
-    
-    # Testa os dois nomes oficiais de modelo da Google
-    modelos_para_testar = ['gemini-1.5-flash', 'gemini-1.5-pro']
     
     prompt_sistema = (
         "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. "
@@ -114,19 +112,12 @@ def perguntar_a_ia(prompt_usuario):
         "Destaque em **negrito** os termos mais importantes."
     )
     
-    ultimo_erro = ""
-    for modelo in modelos_para_testar:
-        try:
-            response = client.models.generate_content(
-                model=modelo,
-                contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
-            )
-            return response.text
-        except Exception as e:
-            ultimo_erro = str(e)
-            continue
-
-    return f"Erro ao conectar com o Gemini: {ultimo_erro}"
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
+        return response.text
+    except Exception as e:
+        return f"Erro ao conectar com o Gemini: {str(e)}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
