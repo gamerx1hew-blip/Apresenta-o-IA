@@ -4,12 +4,12 @@ from google import genai
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Configura a chave de API no ambiente para que genai.Client() reconheça automaticamente
+# Configura a chave de API
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 if api_key:
     os.environ["GEMINI_API_KEY"] = api_key
 
-# Estilização CSS do chat e botões
+# Estilização CSS
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
@@ -114,7 +114,6 @@ def perguntar_a_ia(prompt_usuario):
     )
 
     try:
-        # Inicializa o cliente conforme o código do exemplo da imagem
         client = genai.Client()
         response = client.models.generate_content(
             model="gemini-3.8-flash",
@@ -138,4 +137,66 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             break
 
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo"]):
-        resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas,
+        resposta_texto = """Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."""
+        imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
+        opcoes_novas = []
+    else:
+        topico_encontrado_key = chave_topico
+        
+        if not topico_encontrado_key:
+            for key, item in TODOS_TOPICOS.items():
+                if pergunta_clean in [g.lower() for g in item["gatilhos"]]:
+                    topico_encontrado_key = key
+                    break
+
+        if topico_encontrado_key and topico_encontrado_key in TODOS_TOPICOS:
+            dados = TODOS_TOPICOS[topico_encontrado_key]
+            resposta_texto = dados["texto"]
+            imagem_url = dados["imagem"]
+            opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
+            
+            if len(opcoes_novas) == 0:
+                resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
+        else:
+            resposta_texto = perguntar_a_ia(pergunta_usuario)
+            imagem_url = None
+            opcoes_novas = opcoes_anteriores
+
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": resposta_texto,
+        "img": imagem_url,
+        "opcoes_restantes": opcoes_novas
+    })
+
+for i, message in enumerate(st.session_state.messages):
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+        if "img" in message and message["img"]:
+            st.image(message["img"], use_container_width=True)
+        
+        if message["role"] == "assistant" and i == len(st.session_state.messages) - 1:
+            opcoes = message.get("opcoes_restantes", [])
+            if opcoes:
+                st.write("---")
+                st.caption("👇 **Escolha o próximo assunto:**")
+                for key in opcoes:
+                    label_botao = TODOS_TOPICOS[key]["label"]
+                    if st.button(label_botao, key=f"btn_{i}_{key}"):
+                        processar_pergunta(label_botao, chave_topico=key)
+                        st.rerun()
+
+if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..."):
+    if prompt_usuario.strip().lower() == "reset":
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": "Olá! Sou o **assistente virtual** da apresentação. Sobre qual assunto você gostaria de saber primeiro?",
+                "img": None,
+                "opcoes_restantes": list(TODOS_TOPICOS.keys())
+            }
+        ]
+        st.rerun()
+    else:
+        processar_pergunta(prompt_usuario)
+        st.rerun()
