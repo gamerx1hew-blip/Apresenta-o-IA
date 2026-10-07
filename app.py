@@ -104,7 +104,7 @@ if "messages" not in st.session_state:
 
 def perguntar_a_ia(prompt_usuario):
     if not api_key:
-        return "⚠️ A chave da API do Gemini não foi configurada nos Secrets."
+        return "⚠️ A chave da API do Gemini não foi configurada nos Secrets do Streamlit."
     
     prompt_sistema = (
         "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. "
@@ -112,13 +112,23 @@ def perguntar_a_ia(prompt_usuario):
         "Destaque em **negrito** os termos mais importantes."
     )
     
-    try:
-        # Utiliza diretamente o modelo especificado pela própria mensagem da API
-        model = genai.GenerativeModel('gemini-3.8-flash')
-        response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
-        return response.text
-    except Exception as e:
-        return f"Erro ao conectar com o Gemini: {str(e)}"
+    modelos_para_testar = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-flash',
+        'gemini-pro'
+    ]
+    
+    for nome_modelo in modelos_para_testar:
+        try:
+            model = genai.GenerativeModel(nome_modelo)
+            response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
+            if response and response.text:
+                return response.text
+        except Exception:
+            continue
+
+    return "Não consegui obter a resposta do Gemini no momento. Verifique a chave da API."
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
@@ -137,9 +147,10 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
     else:
         topico_encontrado_key = chave_topico
         
+        # Só ativa o tópico predefinido se a pergunta for EXATAMENTE uma das frases prontas
         if not topico_encontrado_key:
             for key, item in TODOS_TOPICOS.items():
-                if any(gatilho in pergunta_clean for gatilho in item["gatilhos"]):
+                if pergunta_clean in [g.lower() for g in item["gatilhos"]]:
                     topico_encontrado_key = key
                     break
 
@@ -152,6 +163,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
+            # Qualquer pergunta aberta vai diretamente para a IA do Gemini
             resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
             opcoes_novas = opcoes_anteriores
