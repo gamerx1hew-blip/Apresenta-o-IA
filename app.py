@@ -7,7 +7,7 @@ st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="cent
 # Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
 
-# Estilização CSS
+# Estilização CSS (incluindo limite de altura para as imagens não ficarem demasiado compridas)
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
@@ -36,6 +36,13 @@ st.markdown("""
         border-radius: 20px; padding: 8px 14px; font-size: 13px; font-weight: bold; width: 100%;
     }
     .stButton>button:hover { background-color: #00FFA3; color: #0E1117; }
+    
+    /* Controla o tamanho das imagens para não ocuparem o ecrã todo */
+    div[data-testid="stImage"] img {
+        max-height: 250px !important;
+        object-fit: cover !important;
+        border-radius: 10px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -58,7 +65,8 @@ TODOS_TOPICOS = {
         "label": "🗣️ Como entendo comandos de voz?",
         "gatilhos": ["como entendo comandos de voz", "como você entende comandos de voz"],
         "texto": "Eu processo o **som da sua voz**, entendo o comando em **milissegundos** e me conecto aos aparelhos da casa para tocar músicas, acender luzes ou programar alarmes.",
-        "imagem": "https://images.unsplash.com/photo-1543512214-318c7553f230?w=800"
+        # Nova URL da imagem na horizontal (formato paisagem)
+        "imagem": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800"
     },
     "programacao": {
         "label": "💻 Como automatizo programação e máquinas?",
@@ -114,7 +122,6 @@ def perguntar_a_ia(prompt_usuario):
     try:
         client = genai.Client(api_key=api_key)
         
-        # Modelo com cota gratuita mais ampla no Google AI Studio
         response = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
@@ -122,7 +129,6 @@ def perguntar_a_ia(prompt_usuario):
         if response and response.text:
             return response.text
     except Exception as e:
-        # Mensagem amigável em vez de quebrar a tela com o erro da API
         return "🤖 No momento estou recebendo muitas requisições! Por favor, aguarde alguns instantes ou escolha um dos tópicos sugeridos acima."
 
     return "Não foi possível obter resposta da IA no momento."
