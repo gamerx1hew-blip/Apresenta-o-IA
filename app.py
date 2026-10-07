@@ -3,7 +3,7 @@ import time
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Estilo Visual Escuro Futurista
+# CSS para criar os balões de conversa e o botão minimalista no canto
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
@@ -12,25 +12,65 @@ st.markdown("""
         color: #00FFA3 !important;
         text-align: center;
         font-family: 'Courier New', Courier, monospace;
+        margin-top: -30px;
+        margin-bottom: 20px;
+    }
+    
+    /* Botão de reset minimalista no canto superior direito */
+    div[data-testid="stColumn"]:nth-child(2) {
+        display: flex;
+        justify-content: flex-end;
     }
     .stButton>button {
         background-color: #1F2937;
         color: #00FFA3;
         border: 1px solid #00FFA3;
-        border-radius: 10px;
-        font-weight: bold;
-        width: 100%;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        padding: 0px;
+        font-size: 18px;
+        box-shadow: 0 2px 5px rgba(0,255,163,0.2);
     }
     .stButton>button:hover {
         background-color: #00FFA3;
         color: #0E1117;
     }
+
+    /* Estilização dos balões de conversa */
+    div[data-testid="stChatMessage"] {
+        background-color: #161B22;
+        border: 1px solid #30363D;
+        border-radius: 15px;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Destaque para as mensagens da IA */
+    div[data-testid="stChatMessage"]:nth-child(even) {
+        border-left: 4px solid #00FFA3;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 ASSISTENTE DE IA")
+# Topo com título e botão minimalista posicionado no canto direito
+col_titulo, col_botao = st.columns([0.85, 0.15])
 
-# Respostas com termos em negrito (markdown)
+with col_titulo:
+    st.title("🤖 ASSISTENTE DE IA")
+
+with col_botao:
+    if st.button("🔄", help="Resetar Apresentação"):
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": "Olá! Sou o **assistente virtual** da apresentação. Faça uma pergunta sobre **trânsito**, **música**, **voz**, **programação** ou o **futuro do trabalho**!",
+                "img": None
+            }
+        ]
+        st.rerun()
+
 RESPOSTAS = {
     "trânsito": {
         "texto": "Eu analiso o **tráfego de milhares de motoristas** em tempo real. Se encontro um engarrafamento, **recalculo a rota na hora** para você chegar mais rápido e sem estresse.",
@@ -66,7 +106,6 @@ RESPOSTAS = {
     }
 }
 
-# Gerador para o efeito de streaming do texto
 def stream_texto(texto):
     for palavra in texto.split(" "):
         yield palavra + " "
@@ -81,24 +120,14 @@ if "messages" not in st.session_state:
         }
     ]
 
-if st.button("🔄 Resetar Apresentação"):
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": "Olá! Sou o **assistente virtual** da apresentação. Faça uma pergunta sobre **trânsito**, **música**, **voz**, **programação** ou o **futuro do trabalho**!",
-            "img": None
-        }
-    ]
-    st.rerun()
-
-# Exibe o histórico de mensagens
+# Exibição do histórico de mensagens dentro dos balões estilizados
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
         if "img" in message and message["img"]:
             st.image(message["img"], use_container_width=True)
 
-# Caixa de texto personalizada no fundo
+# Campo de entrada no rodapé
 if prompt_usuario := st.chat_input("💬 Digite seu comando ou pergunta aqui..."):
     if prompt_usuario.strip().lower() == "reset":
         st.session_state.messages = [
