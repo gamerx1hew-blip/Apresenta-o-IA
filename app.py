@@ -1,9 +1,40 @@
 import streamlit as st
 import time
 
-st.title("🤖 Assistente de IA - Apresentação")
+# 1. DESIGN DO ECRÃ (Tema Escuro Futurista / Neon)
+st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Dicionário com textos e imagens ajustadas para cada tema
+st.markdown("""
+    <style>
+    .main {
+        background-color: #0E1117;
+    }
+    stApp {
+        background-color: #0E1117;
+    }
+    h1 {
+        color: #00FFA3 !important;
+        text-align: center;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    .stButton>button {
+        background-color: #1F2937;
+        color: #00FFA3;
+        border: 1px solid #00FFA3;
+        border-radius: 10px;
+        font-weight: bold;
+        width: 100%;
+    }
+    .stButton>button:hover {
+        background-color: #00FFA3;
+        color: #0E1117;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🤖 ASSISTENTE DE IA")
+
+# BANCO DE DADOS DE RESPOSTAS E IMAGENS
 RESPOSTAS = {
     "trânsito": {
         "texto": "Eu analiso o tráfego de milhares de motoristas em tempo real. Se encontro um engarrafamento, recalculando a rota na hora para você chegar mais rápido e sem estresse.",
@@ -39,27 +70,46 @@ RESPOSTAS = {
     }
 }
 
+# 2. MENSAGEM INICIAL DE BOAS-VINDAS
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": "Olá! Sou o assistente virtual da apresentação. Faça uma pergunta sobre trânsito, música, voz, programação ou o futuro do trabalho!",
+            "img": None
+        }
+    ]
 
 if st.button("🔄 Resetar Apresentação"):
-    st.session_state.messages = []
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": "Olá! Sou o assistente virtual da apresentação. Faça uma pergunta sobre trânsito, música, voz, programação ou o futuro do trabalho!",
+            "img": None
+        }
+    ]
     st.rerun()
 
-# Exibe o histórico de conversa
+# Exibe o histórico
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
         if "img" in message and message["img"]:
             st.image(message["img"], use_container_width=True)
 
-# Caixa para digitar a pergunta
+# Entrada do utilizador
 if prompt_usuario := st.chat_input("Digite sua pergunta (ou 'reset')..."):
     if prompt_usuario.strip().lower() == "reset":
-        st.session_state.messages = []
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": "Olá! Sou o assistente virtual da apresentação. Faça uma pergunta sobre trânsito, música, voz, programação ou o futuro do trabalho!",
+                "img": None
+            }
+        ]
         st.rerun()
     else:
-        st.session_state.messages.append({"role": "user", "content": prompt_usuario})
+        st.session_state.messages.append({"role": "user", "content": prompt_usuario, "img": None})
         with st.chat_message("user"):
             st.write(prompt_usuario)
 
@@ -74,8 +124,14 @@ if prompt_usuario := st.chat_input("Digite sua pergunta (ou 'reset')..."):
                     imagem_url = dados["imagem"]
                     break
             
-            time.sleep(1)
-            st.write(resposta_texto)
+            # 4. EFEITO VISUAL DE DIGITAÇÃO (LETRA A LETRA)
+            container_texto = st.empty()
+            texto_simulado = ""
+            for caracter in resposta_texto:
+                texto_simulado += caracter
+                container_texto.write(texto_simulado)
+                time.sleep(0.02)
+            
             if imagem_url:
                 st.image(imagem_url, use_container_width=True)
             
