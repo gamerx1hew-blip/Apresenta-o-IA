@@ -1,7 +1,6 @@
 import streamlit as st
 import time
 
-# 1. DESIGN DO ECRÃ (Tema Escuro Futurista / Neon)
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
 st.markdown("""
@@ -34,7 +33,6 @@ st.markdown("""
 
 st.title("🤖 ASSISTENTE DE IA")
 
-# BANCO DE DADOS DE RESPOSTAS E IMAGENS
 RESPOSTAS = {
     "trânsito": {
         "texto": "Eu analiso o tráfego de milhares de motoristas em tempo real. Se encontro um engarrafamento, recalculando a rota na hora para você chegar mais rápido e sem estresse.",
@@ -70,7 +68,12 @@ RESPOSTAS = {
     }
 }
 
-# 2. MENSAGEM INICIAL DE BOAS-VINDAS
+# Função geradora para criar o efeito de escrita estilo IA (palavra por palavra)
+def stream_texto(texto):
+    for palavra in texto.split(" "):
+        yield palavra + " "
+        time.sleep(0.06)
+
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -90,14 +93,14 @@ if st.button("🔄 Resetar Apresentação"):
     ]
     st.rerun()
 
-# Exibe o histórico
+# Exibe o histórico de mensagens já guardadas
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
         if "img" in message and message["img"]:
             st.image(message["img"], use_container_width=True)
 
-# Entrada do utilizador
+# Processa a nova pergunta do utilizador
 if prompt_usuario := st.chat_input("Digite sua pergunta (ou 'reset')..."):
     if prompt_usuario.strip().lower() == "reset":
         st.session_state.messages = [
@@ -124,15 +127,13 @@ if prompt_usuario := st.chat_input("Digite sua pergunta (ou 'reset')..."):
                     imagem_url = dados["imagem"]
                     break
             
-            # 4. EFEITO VISUAL DE DIGITAÇÃO (LETRA A LETRA)
-            container_texto = st.empty()
-            texto_simulado = ""
-            for caracter in resposta_texto:
-                texto_simulado += caracter
-                container_texto.write(texto_simulado)
-                time.sleep(0.02)
+            # Efeito de escrita palavra por palavra igual ao ChatGPT/Gemini
+            st.write_stream(stream_texto(resposta_texto))
             
+            # Animação e delay para simular a criação da imagem pela IA
             if imagem_url:
+                with st.spinner("🎨 Gerando imagem ilustrativa com IA..."):
+                    time.sleep(1.8) # Delay realista
                 st.image(imagem_url, use_container_width=True)
             
             st.session_state.messages.append({
