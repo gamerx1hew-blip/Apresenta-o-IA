@@ -1,9 +1,13 @@
 import streamlit as st
+from google import genai
 import time
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Estilização CSS para o tema escuro e botões estilo balão
+# Inicialização do cliente Gemini usando o segredo salvo no Streamlit
+client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+
+# Estilização CSS do chat e botões
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
@@ -15,67 +19,28 @@ st.markdown("""
         margin-top: -30px;
         margin-bottom: 20px;
     }
-    
-    /* Botão de reset no canto superior direito */
-    div[data-testid="stColumn"]:nth-child(2) {
-        display: flex;
-        justify-content: flex-end;
-    }
+    div[data-testid="stColumn"]:nth-child(2) { display: flex; justify-content: flex-end; }
     .reset-btn button {
-        background-color: #1F2937 !important;
-        color: #00FFA3 !important;
-        border: 1px solid #00FFA3 !important;
-        border-radius: 50% !important;
-        width: 42px !important;
-        height: 42px !important;
-        padding: 0px !important;
-        font-size: 18px !important;
-        box-shadow: 0 2px 5px rgba(0,255,163,0.2) !important;
+        background-color: #1F2937 !important; color: #00FFA3 !important;
+        border: 1px solid #00FFA3 !important; border-radius: 50% !important;
+        width: 42px !important; height: 42px !important; padding: 0px !important;
+        font-size: 18px !important; box-shadow: 0 2px 5px rgba(0,255,163,0.2) !important;
     }
-    .reset-btn button:hover {
-        background-color: #00FFA3 !important;
-        color: #0E1117 !important;
-    }
-
-    /* Balões de mensagem estilo chat */
     div[data-testid="stChatMessage"] {
-        background-color: #161B22;
-        border: 1px solid #30363D;
-        border-radius: 15px;
-        padding: 12px 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        background-color: #161B22; border: 1px solid #30363D;
+        border-radius: 15px; padding: 12px 16px; margin-bottom: 12px;
     }
-    
-    div[data-testid="stChatMessage"]:nth-child(even) {
-        border-left: 4px solid #00FFA3;
-    }
-
-    /* Estilo dos botões/balões clicáveis de opção */
+    div[data-testid="stChatMessage"]:nth-child(even) { border-left: 4px solid #00FFA3; }
     .stButton>button {
-        background-color: #161B22;
-        color: #00FFA3;
-        border: 1px solid #00FFA3;
-        border-radius: 20px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        margin-top: 4px;
-        margin-bottom: 4px;
-        width: 100%;
+        background-color: #161B22; color: #00FFA3; border: 1px solid #00FFA3;
+        border-radius: 20px; padding: 8px 14px; font-size: 13px; font-weight: bold; width: 100%;
     }
-    .stButton>button:hover {
-        background-color: #00FFA3;
-        color: #0E1117;
-    }
+    .stButton>button:hover { background-color: #00FFA3; color: #0E1117; }
     </style>
 """, unsafe_allow_html=True)
 
-# Topo com título e botão de reset
 col_titulo, col_botao = st.columns([0.85, 0.15])
 
-# Lista completa dos tópicos iniciais
 TODOS_TOPICOS = {
     "transito": {
         "label": "🚗 Como te ajudo no trânsito?",
@@ -126,7 +91,6 @@ with col_botao:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Inicialização da sessão
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -137,27 +101,40 @@ if "messages" not in st.session_state:
         }
     ]
 
-# Função para processar perguntas e gerenciar opções restantes
+def perguntar_ao_gemini(prompt_usuario):
+    prompt_sistema = """
+    Você é um assistente interativo em uma apresentação sobre Inteligência Artificial.
+    Responda em português, de forma breve, didática e dinâmica (máximo 3 frases).
+    Use negrito nas palavras mais importantes.
+    Foque o escopo em Inteligência Artificial, Automação, Tecnologia e Trabalho.
+    Se perguntarem algo fora de tecnologia/IA, diga educadamente que só pode falar sobre o tema da apresentação.
+    """
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
+        )
+        return response.text
+    except Exception:
+        return "Tive um problema ao consultar minha inteligência no momento, mas posso continuar respondendo aos temas do nosso roteiro!"
+
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
     pergunta_clean = pergunta_usuario.lower()
     
-    # Identifica as opções restantes anteriores
     opcoes_anteriores = []
     for m in reversed(st.session_state.messages[:-1]):
         if m["role"] == "assistant" and "opcoes_restantes" in m:
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    # Caso seja a resposta final sobre a IA substituir os humanos
-    if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "com certeza", "concordo"]):
+    # Resposta final do roteiro
+    if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo"]):
         resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
         imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
         opcoes_novas = []
     else:
         topico_encontrado_key = chave_topico
-        
-        # Tenta identificar o tópico por palavra-chave caso não venha pelo clique direto do botão
         if not topico_encontrado_key:
             for key, item in TODOS_TOPICOS.items():
                 if any(gatilho in pergunta_clean for gatilho in item["gatilhos"]):
@@ -170,11 +147,11 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             imagem_url = dados["imagem"]
             opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
             
-            # Se não restam mais opções dos botões, faz a pergunta grifada no texto!
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
-            resposta_texto = "Sou um assistente focado em **Inteligência Artificial e Automação no cotidiano**. Escolha um dos tópicos disponíveis ou faça sua pergunta!"
+            # Pergunta livre que não faz parte do roteiro -> chama o Gemini!
+            resposta_texto = perguntar_ao_gemini(pergunta_usuario)
             imagem_url = None
             opcoes_novas = opcoes_anteriores
 
@@ -185,14 +162,13 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         "opcoes_restantes": opcoes_novas
     })
 
-# Exibe o histórico de mensagens
+# Exibição das mensagens
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
         if "img" in message and message["img"]:
             st.image(message["img"], use_container_width=True)
         
-        # Exibe os balões/botões restantes APENAS na última resposta da IA
         if message["role"] == "assistant" and i == len(st.session_state.messages) - 1:
             opcoes = message.get("opcoes_restantes", [])
             if opcoes:
@@ -204,7 +180,6 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
-# Campo para resposta/pergunta digitada no chat
 if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..."):
     if prompt_usuario.strip().lower() == "reset":
         st.session_state.messages = [
