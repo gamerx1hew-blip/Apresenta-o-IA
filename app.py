@@ -1,11 +1,11 @@
 import streamlit as st
-from google import genai
+from openai import OpenAI
 import time
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Inicialização do cliente Gemini usando o segredo salvo no Streamlit
-client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+# Inicialização do cliente OpenAI usando a chave dos Secrets
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Estilização CSS do chat e botões
 st.markdown("""
@@ -44,31 +44,31 @@ col_titulo, col_botao = st.columns([0.85, 0.15])
 TODOS_TOPICOS = {
     "transito": {
         "label": "🚗 Como te ajudo no trânsito?",
-        "gatilhos": ["trânsito", "transito", "gps", "rota", "carro", "motorista", "engarrafamento", "waze"],
+        "gatilhos": ["como te ajudo no trânsito", "como você me ajuda no trânsito", "trânsito no dia a dia"],
         "texto": "Eu analiso o **tráfego de milhares de motoristas** em tempo real. Se encontro um engarrafamento, **recalculo a rota na hora** para você chegar mais rápido e sem estresse.",
         "imagem": "https://images.unsplash.com/photo-1548345680-f5475ea5df84?w=800"
     },
     "musica": {
         "label": "🎵 Como crio playlists de música?",
-        "gatilhos": ["música", "musica", "playlist", "som", "spotify", "ritmo"],
+        "gatilhos": ["como crio playlists", "como você cria playlists", "playlists de música"],
         "texto": "Eu meço o seu **histórico de reprodução**, o ritmo das músicas que você mais escuta e o horário do dia para montar **playlists personalizadas** que combinam com o seu momento.",
         "imagem": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800"
     },
     "voz": {
         "label": "🗣️ Como entendo comandos de voz?",
-        "gatilhos": ["voz", "falar", "comando", "alexa", "siri", "assistente", "casa"],
+        "gatilhos": ["como entendo comandos de voz", "como você entende comandos de voz"],
         "texto": "Eu processo o **som da sua voz**, entendo o comando em **milissegundos** e me conecto aos aparelhos da casa para tocar músicas, acender luzes ou programar alarmes.",
         "imagem": "https://images.unsplash.com/photo-1543512214-318c7553f230?w=800"
     },
     "programacao": {
         "label": "💻 Como automatizo programação e máquinas?",
-        "gatilhos": ["programação", "programacao", "código", "codigo", "sistema", "máquina", "maquina", "robô", "robo"],
+        "gatilhos": ["como automatizo programação", "como você automatiza a programação"],
         "texto": "Eu assumo a **digitação de códigos repetitivos**, encontro erros no sistema e **comando máquinas** para executarem movimentos precisos sem cansar ou errar.",
         "imagem": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800"
     },
     "fraudes": {
         "label": "🛡️ Como detecto fraudes e cliques falsos?",
-        "gatilhos": ["impulso", "clique", "fraude", "perfil", "fake", "redes", "social", "curtida"],
+        "gatilhos": ["como detecto fraudes", "como a ia detecta impulsos"],
         "texto": "Eu analiso o **comportamento das redes sociais**. Quando vejo milhares de curtidas vindas de perfis falsos em poucos segundos, **bloqueio a ação** para evitar fraudes.",
         "imagem": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800"
     }
@@ -101,26 +101,26 @@ if "messages" not in st.session_state:
         }
     ]
 
-def perguntar_ao_gemini(prompt_usuario):
-    prompt_sistema = """
-    Você é um assistente interativo em uma apresentação sobre Inteligência Artificial.
-    Responda em português, de forma breve, didática e dinâmica (máximo 3 frases).
-    Use negrito nas palavras mais importantes.
-    Foque o escopo em Inteligência Artificial, Automação, Tecnologia e Trabalho.
-    Se perguntarem algo fora de tecnologia/IA, diga educadamente que só pode falar sobre o tema da apresentação.
-    """
+def perguntar_a_ia(prompt_usuario):
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. Responda em português de forma clara, breve e didática (no máximo 3 frases). Destaque em **negrito** os termos mais importantes."
+                },
+                {"role": "user", "content": prompt_usuario}
+            ],
+            max_tokens=150
         )
-        return response.text
-    except Exception:
-        return "Tive um problema ao consultar minha inteligência no momento, mas posso continuar respondendo aos temas do nosso roteiro!"
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Erro na API: {str(e)}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
-    pergunta_clean = pergunta_usuario.lower()
+    pergunta_clean = pergunta_usuario.lower().strip()
     
     opcoes_anteriores = []
     for m in reversed(st.session_state.messages[:-1]):
@@ -128,13 +128,15 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    # Resposta final do roteiro
+    # Caso seja a pergunta final reflexiva
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo"]):
         resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
         imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
         opcoes_novas = []
     else:
         topico_encontrado_key = chave_topico
+        
+        # Verifica se corresponde exatamente ao clique do botão
         if not topico_encontrado_key:
             for key, item in TODOS_TOPICOS.items():
                 if any(gatilho in pergunta_clean for gatilho in item["gatilhos"]):
@@ -150,8 +152,8 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
-            # Pergunta livre que não faz parte do roteiro -> chama o Gemini!
-            resposta_texto = perguntar_ao_gemini(pergunta_usuario)
+            # Qualquer pergunta livre vai direto para a IA responder na hora!
+            resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
             opcoes_novas = opcoes_anteriores
 
@@ -162,7 +164,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         "opcoes_restantes": opcoes_novas
     })
 
-# Exibição das mensagens
+# Exibição do histórico de mensagens
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
@@ -180,6 +182,7 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
+# Campo do chat
 if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..."):
     if prompt_usuario.strip().lower() == "reset":
         st.session_state.messages = [
