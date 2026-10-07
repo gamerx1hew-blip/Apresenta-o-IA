@@ -4,10 +4,8 @@ from google import genai
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Configura a chave de API
-api_key = st.secrets.get("GEMINI_API_KEY", None)
-if api_key:
-    os.environ["GEMINI_API_KEY"] = api_key
+# Procura a chave nos Secrets do Streamlit (tenta "GEMINI_API_KEY" ou "gemini_api_key")
+api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
 
 # Estilização CSS
 st.markdown("""
@@ -104,9 +102,9 @@ if "messages" not in st.session_state:
     ]
 
 def perguntar_a_ia(prompt_usuario):
-    if not os.environ.get("GEMINI_API_KEY"):
-        return "⚠️ A chave da API do Gemini não foi configurada nos Secrets do Streamlit."
-    
+    if not api_key:
+        return "⚠️ A chave GEMINI_API_KEY não foi encontrada nos Secrets do Streamlit."
+
     prompt_sistema = (
         "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. "
         "Responda em português de forma clara, breve e didática (no máximo 3 frases). "
@@ -114,16 +112,19 @@ def perguntar_a_ia(prompt_usuario):
     )
 
     try:
-        client = genai.Client()
+        # Passa explicitamente a chave para o cliente
+        client = genai.Client(api_key=api_key)
+        
+        # Chama a versão de produção estável
         response = client.models.generate_content(
-            model="gemini-3.8-flash",
+            model="gemini-2.5-flash",
             contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
         )
         if response and response.text:
             return response.text
     except Exception as e:
-        return f"Erro ao acessar a API do Gemini: {str(e)}"
-            
+        return f"Erro na chamada da API: {str(e)}"
+
     return "Não foi possível obter resposta da IA no momento."
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
@@ -137,7 +138,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             break
 
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo"]):
-        resposta_texto = """Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."""
+        resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
         imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
         opcoes_novas = []
     else:
