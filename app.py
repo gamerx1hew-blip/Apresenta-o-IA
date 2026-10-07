@@ -8,29 +8,32 @@ st.set_page_config(page_title="Assistente Inteligente", page_icon="🤖", layout
 # Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
 
-# Função de Leitura de Voz (Text-to-Speech via JavaScript)
-def falar_texto(texto):
-    if texto:
-        # Limpa caracteres de formatação Markdown para a voz ler com clareza
-        texto_limpo = (
-            texto.replace("**", "")
-                 .replace("\n", " ")
-                 .replace("---", "")
-                 .replace("'", "\\'")
-                 .replace('"', '\\"')
-        )
-        js_code = f"""
-            <script>
-                if ('speechSynthesis' in window) {{
-                    window.speechSynthesis.cancel();
-                    var msg = new SpeechSynthesisUtterance('{texto_limpo}');
-                    msg.lang = 'pt-BR';
-                    msg.rate = 1.0;
-                    window.speechSynthesis.speak(msg);
-                }}
-            </script>
-        """
-        components.html(js_code, height=0)
+# Som de notificação embutido (Base64)
+SOM_NOTIFICACAO = "data:audio/mp3;base64,SUQ3BAAAAAAAI1RQRTEAAAAHBQU2MTU4AENPTU0AAAA3AAAAAAB2YmluYXJ5LWF1ZGlvX21lc3NhZ2Vfbm90aWZpY2F0aW9uX2NoaW1lX3BvcC5tcDNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N3//uQZAAAAAAAAAAAAAAFgAAAAAAAB3CRAAAAEAAAI4AAAADAAACAEAAAAAAAAAA2FiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6AAAA"
+
+def tocar_som_notificacao():
+    # Efeito sonoro curto acionado via JavaScript no navegador
+    js_code = """
+        <script>
+            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            var oscillator = audioCtx.createOscillator();
+            var gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+            oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        </script>
+    """
+    components.html(js_code, height=0)
 
 # Estilização CSS
 st.markdown("""
@@ -203,7 +206,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         "opcoes_restantes": opcoes_novas
     })
 
-# Renderiza as mensagens anteriores no ecrã
+# Renderiza as mensagens no ecrã
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
@@ -221,9 +224,9 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
-# Ativa a fala automática apenas para a última resposta do assistente
+# Reproduz o efeito sonoro apenas quando a última mensagem for uma resposta do assistente
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
-    falar_texto(st.session_state.messages[-1]["content"])
+    tocar_som_notificacao()
 
 if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..."):
     if prompt_usuario.strip().lower() == "reset":
