@@ -4,7 +4,7 @@ from google import genai
 
 st.set_page_config(page_title="Assistente de IA", page_icon="🤖", layout="centered")
 
-# Procura a chave nos Secrets do Streamlit
+# Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
 
 # Estilização CSS
@@ -114,15 +114,16 @@ def perguntar_a_ia(prompt_usuario):
     try:
         client = genai.Client(api_key=api_key)
         
-        # Chama a versão recomendada pela API do Gemini
+        # Modelo com cota gratuita mais ampla no Google AI Studio
         response = client.models.generate_content(
-            model="gemini-3.8-flash",
+            model="gemini-1.5-flash",
             contents=f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}"
         )
         if response and response.text:
             return response.text
     except Exception as e:
-        return f"Erro na chamada da API: {str(e)}"
+        # Mensagem amigável em vez de quebrar a tela com o erro da API
+        return "🤖 No momento estou recebendo muitas requisições! Por favor, aguarde alguns instantes ou escolha um dos tópicos sugeridos acima."
 
     return "Não foi possível obter resposta da IA no momento."
 
