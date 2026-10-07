@@ -112,23 +112,25 @@ def perguntar_a_ia(prompt_usuario):
         "Destaque em **negrito** os termos mais importantes."
     )
     
-    modelos_para_testar = [
-        'gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'gemini-flash',
-        'gemini-pro'
-    ]
+    # 1. Tenta consulta à API Gemini
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
+        if response and response.text:
+            return response.text
+    except Exception as e:
+        erro_api = str(e)
     
-    for nome_modelo in modelos_para_testar:
-        try:
-            model = genai.GenerativeModel(nome_modelo)
-            response = model.generate_content(f"{prompt_sistema}\n\nPergunta do usuário: {prompt_usuario}")
-            if response and response.text:
-                return response.text
-        except Exception:
-            continue
-
-    return "Não consegui obter a resposta do Gemini no momento. Verifique a chave da API."
+    # 2. Respostas locais de backup para evitar falhas durante a apresentação
+    p_lower = prompt_usuario.lower()
+    if "trânsito" in p_lower or "transito" in p_lower:
+        return "O **trânsito** é a movimentação de veículos e pedestres nas vias públicas. A **Inteligência Artificial** ajuda a organizá-lo analisando rotas e reduzindo engarrafamentos em tempo real!"
+    elif "música" in p_lower or "musica" in p_lower:
+        return "A **música** é uma expressão artística de sons e ritmos. A IA analisa o seu **gosto musical** para recomendar faixas perfeitas para o seu dia!"
+    elif "ia" in p_lower or "inteligencia artificial" in p_lower:
+        return "A **Inteligência Artificial** é a capacidade de sistemas simularem o **raciocínio humano**, aprendendo com dados para resolver problemas do cotidiano."
+    
+    return f"Não foi possível conectar ao Gemini no momento. Detalhes: {erro_api if 'erro_api' in locals() else 'Erro de conexão'}"
 
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
@@ -147,7 +149,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
     else:
         topico_encontrado_key = chave_topico
         
-        # Só ativa o tópico predefinido se a pergunta for EXATAMENTE uma das frases prontas
         if not topico_encontrado_key:
             for key, item in TODOS_TOPICOS.items():
                 if pergunta_clean in [g.lower() for g in item["gatilhos"]]:
@@ -163,7 +164,6 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
-            # Qualquer pergunta aberta vai diretamente para a IA do Gemini
             resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
             opcoes_novas = opcoes_anteriores
