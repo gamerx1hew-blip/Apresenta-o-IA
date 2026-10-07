@@ -37,7 +37,7 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #00FFA3; color: #0E1117; }
     
-    /* Controla o tamanho das imagens */
+    /* Controla a altura limite e ajuste das imagens */
     div[data-testid="stImage"] img {
         max-height: 250px !important;
         object-fit: cover !important;
@@ -48,35 +48,36 @@ st.markdown("""
 
 col_titulo, col_botao = st.columns([0.85, 0.15])
 
+# Tópicos com textos ajustados para linguagem explicativa/científica
 TODOS_TOPICOS = {
     "transito": {
         "label": "🚗 Como a IA ajuda no trânsito?",
         "gatilhos": ["como a ia ajuda no trânsito", "como a ia ajuda no transito", "trânsito", "transito"],
-        "texto": "Eu analiso o **tráfego de milhares de motoristas** em tempo real. Se encontro um engarrafamento, **recalculo a rota na hora** para você chegar mais rápido e sem estresse.",
+        "texto": "Sistemas de IA analisam o **tráfego de milhares de motoristas em tempo real**. Ao identificar congestionamentos, os algoritmos **recalculam rotas instantaneamente** para otimizar o tempo e reduzir o fluxo de veículos.",
         "imagem": "https://images.unsplash.com/photo-1548345680-f5475ea5df84?w=800"
     },
     "musica": {
         "label": "🎵 Como a IA recomenda músicas?",
         "gatilhos": ["como a ia recomenda músicas", "como a ia recomenda musicas", "música", "playlists"],
-        "texto": "Eu meço o seu **histórico de reprodução**, o ritmo das músicas que você mais escuta e o horário do dia para montar **playlists personalizadas** que combinam com o seu momento.",
+        "texto": "Algoritmos de recomendação analisam o **histórico de escuta**, o ritmo, os gêneros e até o horário em que você ouve música para identificar padrões e **gerar playlists personalizadas**.",
         "imagem": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800"
     },
     "voz": {
         "label": "🎙️ Como a IA entende a voz humana?",
         "gatilhos": ["como a ia entende a voz humana", "como a ia entende a voz", "voz humana", "comando de voz"],
-        "texto": "Eu processo o **som da sua voz**, entendo o comando em **milissegundos** e me conecto aos aparelhos da casa para tocar músicas, acender luzes ou programar alarmes.",
+        "texto": "Assistentes virtuais usam IA para **transformar a fala em texto**, interpretar o significado da mensagem e **executar comandos**, como tocar músicas, responder perguntas ou controlar dispositivos inteligentes.",
         "imagem": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800"
     },
     "automacao": {
         "label": "🤖 Como a IA automatiza tarefas?",
         "gatilhos": ["como a ia automatiza tarefas", "como a ia automatiza", "automatiza tarefas", "programação e máquinas"],
-        "texto": "Eu assumo a **digitação de códigos repetitivos**, encontro erros no sistema e **comando máquinas** para executarem movimentos precisos sem cansar ou errar.",
+        "texto": "A IA pode **automatizar rotinas repetitivas**, identificar erros em linhas de código e **orientar máquinas e robôs industriais** para executarem movimentos com alta precisão e sem cansaço.",
         "imagem": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800"
     },
     "fraudes": {
         "label": "🛡️ Como a IA detecta fraudes?",
         "gatilhos": ["como a ia detecta fraudes", "como a ia detecta fraude", "fraudes", "cliques falsos"],
-        "texto": "Eu analiso o **comportamento das redes sociais**. Quando vejo milhares de curtidas vindas de perfis falsos em poucos segundos, **bloqueio a ação** para evitar fraudes.",
+        "texto": "Sistemas de IA analisam **padrões de comportamento e grandes volumes de dados**. Ao detectar anomalias, como milhares de acessos ou transações suspeitas em segundos, a IA **bloqueia ações fraudulentas**.",
         "imagem": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800"
     }
 }
@@ -113,8 +114,8 @@ def perguntar_a_ia(prompt_usuario):
         return "⚠️ A chave GEMINI_API_KEY não foi encontrada nos Secrets do Streamlit."
 
     prompt_sistema = (
-        "Você é um assistente virtual interativo numa apresentação sobre Inteligência Artificial. "
-        "Responda em português de forma clara, breve e didática (no máximo 3 frases). "
+        "Você é um assistente virtual interativo numa apresentação acadêmica sobre Inteligência Artificial. "
+        "Responda em português de forma clara, técnica e didática (no máximo 3 frases). "
         "Destaque em **negrito** os termos mais importantes."
     )
 
@@ -126,7 +127,7 @@ def perguntar_a_ia(prompt_usuario):
         )
         if response and response.text:
             return response.text
-    except Exception as e:
+    except Exception:
         return "🤖 No momento estou recebendo muitas requisições! Por favor, aguarde alguns instantes ou escolha um dos tópicos sugeridos acima."
 
     return "Não foi possível obter resposta da IA no momento."
@@ -141,8 +142,13 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo"]):
-        resposta_texto = "Não importa o ponto de vista, a verdade é que minha função é **TRABALHAR JUNTO** com vocês! Eu faço os cálculos rápidos e tarefas repetitivas, mas só os humanos possuem **criatividade, empatia e decisões éticas**."
+    # Resposta rica e reflexiva para o debate final sobre o futuro dos empregos
+    if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
+        resposta_texto = (
+            "É uma excelente reflexão! A IA já automatiza tarefas operacionais e repetitivas, "
+            "mas o cenário mais provável é o de **colaboração e evolução do trabalho**. "
+            "Enquanto a IA lida com processamento de dados e velocidade, os humanos continuam indispensáveis para **criatividade, empatia, pensamento crítico e decisões éticas**."
+        )
         imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
         opcoes_novas = []
     else:
@@ -160,6 +166,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             imagem_url = dados["imagem"]
             opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
             
+            # Quando apresentar todos os 5 tópicos, puxa a pergunta final provocativa
             if len(opcoes_novas) == 0:
                 resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
         else:
