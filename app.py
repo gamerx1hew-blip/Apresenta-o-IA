@@ -1,18 +1,19 @@
 import os
 import streamlit as st
 import streamlit.components.v1 as components
+import pandas as pd
 from google import genai
+from streamlit_gsheets import GSheetsConnection
 
 st.set_page_config(page_title="Assistente Inteligente", page_icon="🤖", layout="centered")
 
 # Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
 
-# Som de notificação embutido (Base64)
-SOM_NOTIFICACAO = "data:audio/mp3;base64,SUQ3BAAAAAAAI1RQRTEAAAAHBQU2MTU4AENPTU0AAAA3AAAAAAB2YmluYXJ5LWF1ZGlvX21lc3NhZ2Vfbm90aWZpY2F0aW9uX2NoaW1lX3BvcC5tcDNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N3//uQZAAAAAAAAAAAAAAFgAAAAAAAB3CRAAAAEAAAI4AAAADAAACAEAAAAAAAAAA2FiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6AAAA"
+# URL da Planilha criada no Google Drive
+SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/17nRiQ8C4G0Jm58WibjkS5FXW2S6NOCFkPjKPwRR3Oj0/edit"
 
 def tocar_som_notificacao():
-    # Efeito sonoro curto acionado via JavaScript no navegador
     js_code = """
         <script>
             var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -20,8 +21,8 @@ def tocar_som_notificacao():
             var gainNode = audioCtx.createGain();
             
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-            oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+            oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
             
             gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
@@ -136,6 +137,12 @@ if "messages" not in st.session_state:
         }
     ]
 
+# Gerenciamento de votos persistentes
+if "votos_sim" not in st.session_state:
+    st.session_state.votos_sim = 0
+if "votos_nao" not in st.session_state:
+    st.session_state.votos_nao = 0
+
 def perguntar_a_ia(prompt_usuario):
     if not api_key:
         return "⚠️ A chave GEMINI_API_KEY não foi encontrada nos Secrets do Streamlit."
@@ -159,6 +166,12 @@ def perguntar_a_ia(prompt_usuario):
 
     return "Não foi possível obter resposta da IA no momento."
 
+def registar_voto(resposta_limpa):
+    if any(sim in resposta_limpa for sim in ["sim", "acho que sim", "com certeza", "vai substituir", "com certeza sim"]):
+        st.session_state.votos_sim += 1
+    else:
+        st.session_state.votos_nao += 1
+
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
     pergunta_clean = pergunta_usuario.lower().strip()
@@ -170,6 +183,8 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             break
 
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
+        registar_voto(pergunta_clean)
+        
         resposta_texto = (
             "É uma excelente reflexão! A IA já automatiza tarefas operacionais e repetitivas, "
             "mas o cenário mais provável é o de **colaboração e evolução do trabalho**. "
@@ -224,7 +239,17 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
-# Reproduz o efeito sonoro apenas quando a última mensagem for uma resposta do assistente
+# Exibe o gráfico se houver pelo menos 1 voto acumulado
+if st.session_state.votos_sim > 0 or st.session_state.votos_nao > 0:
+    st.write("---")
+    st.subheader("📊 Resultado da Pesquisa da Apresentação")
+    df_grafico = pd.DataFrame({
+        'Opinião': ['Vai substituir', 'Não vai substituir (Colaboração)'],
+        'Votos': [st.session_state.votos_sim, st.session_state.votos_nao]
+    }).set_index('Opinião')
+    st.bar_chart(df_grafico)
+
+# Efeito sonoro na resposta da IA
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
     tocar_som_notificacao()
 
