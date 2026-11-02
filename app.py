@@ -135,10 +135,15 @@ if "messages" not in st.session_state:
         }
     ]
 
-if "votos_sim" not in st.session_state:
-    st.session_state.votos_sim = 0
-if "votos_nao" not in st.session_state:
-    st.session_state.votos_nao = 0
+# Dicionário de votos para as 4 categorias solicitadas pelo professor
+if "votos" not in st.session_state:
+    st.session_state.votos = {
+        "Vai substituir": 0,
+        "Vai ajudar": 0,
+        "Vai trabalhar junto": 0,
+        "Ainda não sei": 0
+    }
+
 if "votou_final" not in st.session_state:
     st.session_state.votou_final = False
 
@@ -175,16 +180,31 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
-        if any(sim in pergunta_clean for sim in ["sim", "com certeza", "vai substituir"]):
-            st.session_state.votos_sim += 1
-        else:
-            st.session_state.votos_nao += 1
-            
+    # Verifica se a mensagem enviada corresponde a uma das opções de voto do professor
+    voto_encontrado = None
+    for categoria in st.session_state.votos.keys():
+        if categoria.lower() in pergunta_clean or pergunta_clean in categoria.lower():
+            voto_encontrado = categoria
+            break
+
+    if voto_encontrado or any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
+        if not voto_encontrado:
+            # Classificação inteligente caso digitem livremente
+            if "sim" in pergunta_clean or "substituir" in pergunta_clean:
+                voto_encontrado = "Vai substituir"
+            elif "ajud" in pergunta_clean:
+                voto_encontrado = "Vai ajudar"
+            elif "trabalhar junto" in pergunta_clean or "junto" in pergunta_clean:
+                voto_encontrado = "Vai trabalhar junto"
+            else:
+                voto_encontrado = "Ainda não sei"
+
+        st.session_state.votos[voto_encontrado] += 1
         st.session_state.votou_final = True
         
         resposta_texto = (
-            "É uma excelente reflexão! A IA já automatiza tarefas operacionais e repetitivas, "
+            f"Você votou: **{voto_encontrado}**! Obrigado pela participação. "
+            "A IA já automatiza tarefas operacionais e repetitivas, "
             "mas o cenário mais provável é o de **colaboração e evolução do trabalho**. "
             "Enquanto a IA lida com processamento de dados e velocidade, os humanos continuam indispensáveis para **criatividade, empatia, pensamento crítico e decisões éticas**."
         )
@@ -206,7 +226,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
             
             if len(opcoes_novas) == 0:
-                resposta_texto += "\n\n---\n🔥 **E afinal: você acha que a IA vai substituir os humanos? Digite sua opinião aqui no chat!**"
+                resposta_texto += "\n\n---\n🔥 **E afinal: IA vai substituir o homem? Escolha uma das opções abaixo ou digite sua opinião!**"
         else:
             resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
@@ -236,26 +256,47 @@ for i, message in enumerate(st.session_state.messages):
                     if st.button(label_botao, key=f"btn_{i}_{key}"):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
+            
+            # Se chegou no final (opções esgotadas), exibe botões diretos de voto para o público escolher
+            if not opcoes and len(st.session_state.messages) > 1 and "E afinal" in message["content"]:
+                st.write("---")
+                st.caption("🗳️ **Escolha sua resposta para a pesquisa:**")
+                
+                col_v1, col_v2 = st.columns(2)
+                with col_v1:
+                    if st.button("🔴 Vai substituir", key="v_substituir"):
+                        processar_pergunta("Vai substituir")
+                        st.rerun()
+                    if st.button("🟢 Vai ajudar", key="v_ajudar"):
+                        processar_pergunta("Vai ajudar")
+                        st.rerun()
+                with col_v2:
+                    if st.button("🔵 Vai trabalhar junto", key="v_junto"):
+                        processar_pergunta("Vai trabalhar junto")
+                        st.rerun()
+                    if st.button("🟡 Ainda não sei", key="v_naosei"):
+                        processar_pergunta("Ainda não sei")
+                        st.rerun()
 
-# Exibe o gráfico corrigido e alinhado
+# Exibe o gráfico limpo e organizado com as 4 categorias
 if st.session_state.votou_final:
     st.write("---")
     st.subheader("📊 Resultado da Pesquisa da Apresentação")
     
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(7, 4.5))
     fig.patch.set_facecolor('#0E1117')
     ax.set_facecolor('#161B22')
     
-    categorias = ['Vai substituir', 'Não vai substituir']
-    votos = [st.session_state.votos_sim, st.session_state.votos_nao]
-    cores = ['#00FFA3', '#1F6FEB']
+    categorias = list(st.session_state.votos.keys())
+    votos = list(st.session_state.votos.values())
+    cores = ['#FF5B5B', '#00FFA3', '#1F6FEB', '#FFD166']
     
-    barras = ax.bar(categorias, votos, color=cores, width=0.4, edgecolor='#30363D')
+    barras = ax.bar(categorias, votos, color=cores, width=0.5, edgecolor='#30363D')
     
     ax.set_ylabel('Total de Votos', color='white', fontsize=10)
-    ax.tick_params(colors='white', labelsize=10)
+    ax.tick_params(colors='white', labelsize=9)
     
-    # Força o eixo Y a usar apenas números inteiros (0, 1, 2, etc.)
+    # Força o eixo Y a usar apenas números inteiros
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     
     ax.spines['top'].set_visible(False)
@@ -264,7 +305,6 @@ if st.session_state.votou_final:
     ax.spines['bottom'].set_color('#30363D')
     ax.grid(axis='y', linestyle='--', alpha=0.2, color='white')
     
-    # Adiciona os números exatos em cima de cada barra de forma legível
     max_voto = max(votos) if max(votos) > 0 else 1
     ax.set_ylim(0, max_voto + 1.5)
     
@@ -274,9 +314,9 @@ if st.session_state.votou_final:
                     xy=(barra.get_x() + barra.get_width() / 2, altura),
                     xytext=(0, 5),
                     textcoords="offset points",
-                    ha='center', va='bottom', color='white', fontweight='bold', fontsize=12)
+                    ha='center', va='bottom', color='white', fontweight='bold', fontsize=11)
 
-    plt.xticks(color='white', fontsize=10)
+    plt.xticks(color='white', fontsize=9, rotation=15)
     plt.tight_layout()
     st.pyplot(fig)
 
