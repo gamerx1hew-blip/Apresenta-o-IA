@@ -112,7 +112,7 @@ with col_titulo:
 
 with col_botao:
     st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
-    if st.button("🔄", help="Resetar Apresentação"):
+    if st.button("🔄", help="Resetar Tudo"):
         st.session_state.messages = [
             {
                 "role": "assistant",
@@ -281,7 +281,6 @@ if st.session_state.votou_final:
     fig.patch.set_facecolor('#0E1117')
     ax.set_facecolor('#161B22')
     
-    # Índices numéricos para as barras (1, 2, 3, 4) para ficar super limpo
     indices = [1, 2, 3, 4]
     votos = list(st.session_state.votos.values())
     cores = ['#FF5B5B', '#00FFA3', '#1F6FEB', '#FFD166']
@@ -291,21 +290,19 @@ if st.session_state.votou_final:
     ax.set_ylabel('Total de Votos', color='white', fontsize=10)
     ax.tick_params(colors='white', labelsize=10)
     
-    # Oculta os nomes longos do eixo X para focar apenas nas colunas numéricas
     ax.set_xticks(indices)
     ax.set_xticklabels(['1', '2', '3', '4'], color='white', fontweight='bold', fontsize=11)
     
-    # Eixo Y apenas com inteiros
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    # Eixo Y inteligente (se houver muitos votos, o passo ajusta-se automaticamente)
+    max_voto = max(votos) if max(votos) > 0 else 1
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
+    ax.set_ylim(0, max_voto + max(2, int(max_voto * 0.3)))
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_color('#30363D')
     ax.spines['bottom'].set_color('#30363D')
     ax.grid(axis='y', linestyle='--', alpha=0.2, color='white')
-    
-    max_voto = max(votos) if max(votos) > 0 else 1
-    ax.set_ylim(0, max_voto + 1.5)
     
     for barra in barras:
         altura = barra.get_height()
@@ -318,7 +315,6 @@ if st.session_state.votou_final:
     plt.tight_layout()
     st.pyplot(fig)
     
-    # Legenda limpa em texto com emojis coloridos logo abaixo
     st.markdown("""
         **Legenda das colunas:**
         * 🔴 **Coluna 1:** Vai substituir
@@ -326,6 +322,20 @@ if st.session_state.votou_final:
         * 🔵 **Coluna 3:** Vai trabalhar junto
         * 🟡 **Coluna 4:** Ainda não sei
     """)
+    
+    st.write("")
+    # Botão rápido para a próxima pessoa votar sem precisar apagar a conversa toda
+    if st.button("➕ **Registrar Voto de Outra Pessoa**"):
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": "Olá de novo! Vamos registrar o voto de mais um participante. Qual o seu palpite sobre a IA?",
+                "img": None,
+                "opcoes_restantes": list(TODOS_TOPICOS.keys())
+            }
+        ]
+        st.session_state.votou_final = False
+        st.rerun()
 
 # Efeito sonoro na resposta da IA
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
