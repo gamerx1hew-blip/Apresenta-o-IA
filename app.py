@@ -1,17 +1,13 @@
 import os
 import streamlit as st
 import streamlit.components.v1 as components
-import pandas as pd
+import matplotlib.pyplot as plt
 from google import genai
-from streamlit_gsheets import GSheetsConnection
 
 st.set_page_config(page_title="Assistente Inteligente", page_icon="🤖", layout="centered")
 
 # Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
-
-# URL da Planilha criada no Google Drive
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/17nRiQ8C4G0Jm58WibjkS5FXW2S6NOCFkPjKPwRR3Oj0/edit"
 
 def tocar_som_notificacao():
     js_code = """
@@ -66,7 +62,7 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #00FFA3; color: #0E1117; }
     
-    /* Controla a altura limite e ajuste das imagens */
+    /* Controla o tamanho das imagens */
     div[data-testid="stImage"] img {
         max-height: 250px !important;
         object-fit: cover !important;
@@ -124,6 +120,7 @@ with col_botao:
                 "opcoes_restantes": list(TODOS_TOPICOS.keys())
             }
         ]
+        st.session_state.votou_final = False
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -137,11 +134,12 @@ if "messages" not in st.session_state:
         }
     ]
 
-# Gerenciamento de votos persistentes
 if "votos_sim" not in st.session_state:
     st.session_state.votos_sim = 0
 if "votos_nao" not in st.session_state:
     st.session_state.votos_nao = 0
+if "votou_final" not in st.session_state:
+    st.session_state.votou_final = False
 
 def perguntar_a_ia(prompt_usuario):
     if not api_key:
@@ -166,12 +164,6 @@ def perguntar_a_ia(prompt_usuario):
 
     return "Não foi possível obter resposta da IA no momento."
 
-def registar_voto(resposta_limpa):
-    if any(sim in resposta_limpa for sim in ["sim", "acho que sim", "com certeza", "vai substituir", "com certeza sim"]):
-        st.session_state.votos_sim += 1
-    else:
-        st.session_state.votos_nao += 1
-
 def processar_pergunta(pergunta_usuario, chave_topico=None):
     st.session_state.messages.append({"role": "user", "content": pergunta_usuario, "img": None})
     pergunta_clean = pergunta_usuario.lower().strip()
@@ -183,7 +175,12 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             break
 
     if any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
-        registar_voto(pergunta_clean)
+        if any(sim in pergunta_clean for sim in ["sim", "com certeza", "vai substituir"]):
+            st.session_state.votos_sim += 1
+        else:
+            st.session_state.votos_nao += 1
+            
+        st.session_state.votou_final = True
         
         resposta_texto = (
             "É uma excelente reflexão! A IA já automatiza tarefas operacionais e repetitivas, "
@@ -239,15 +236,39 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
-# Exibe o gráfico se houver pelo menos 1 voto acumulado
-if st.session_state.votos_sim > 0 or st.session_state.votos_nao > 0:
+# Exibe o gráfico estático e profissional apenas quando a pessoa interagir com a pergunta final
+if st.session_state.votou_final:
     st.write("---")
     st.subheader("📊 Resultado da Pesquisa da Apresentação")
-    df_grafico = pd.DataFrame({
-        'Opinião': ['Vai substituir', 'Não vai substituir (Colaboração)'],
-        'Votos': [st.session_state.votos_sim, st.session_state.votos_nao]
-    }).set_index('Opinião')
-    st.bar_chart(df_grafico)
+    
+    fig, ax = plt.subplots(figsize=(6, 3.5))
+    fig.patch.set_facecolor('#0E1117')
+    ax.set_facecolor('#161B22')
+    
+    categorias = ['Vai substituir', 'Não vai substituir']
+    votos = [st.session_state.votos_sim, st.session_state.votos_nao]
+    cores = ['#00FFA3', '#1F6FEB']
+    
+    barras = ax.bar(categorias, votos, color=cores, width=0.45, edgecolor='#30363D')
+    
+    ax.set_ylabel('Total de Votos', color='white', fontsize=10)
+    ax.tick_params(colors='white', labelsize=10)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_color('#30363D')
+    ax.spines['bottom'].set_color('#30363D')
+    ax.grid(axis='y', linestyle='--', alpha=0.2, color='white')
+    
+    # Adiciona os números exatos em cima de cada barra
+    for barra in barras:
+        altura = barra.get_height()
+        ax.annotate(f'{altura}',
+                    xy=(barra.get_x() + barra.get_width() / 2, altura),
+                    xytext=(0, 3),  # 3 pontos de deslocamento vertical
+                    textcoords="offset points",
+                    ha='center', va='bottom', color='white', fontweight='bold', fontsize=11)
+
+    st.pyplot(fig)
 
 # Efeito sonoro na resposta da IA
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
@@ -263,6 +284,7 @@ if prompt_usuario := st.chat_input("💬 Responda à IA ou digite sua pergunta..
                 "opcoes_restantes": list(TODOS_TOPICOS.keys())
             }
         ]
+        st.session_state.votou_final = False
         st.rerun()
     else:
         processar_pergunta(prompt_usuario)
