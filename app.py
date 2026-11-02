@@ -2,6 +2,7 @@ import os
 import streamlit as st
 import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from google import genai
 
 st.set_page_config(page_title="Assistente Inteligente", page_icon="🤖", layout="centered")
@@ -236,12 +237,12 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
-# Exibe o gráfico estático e profissional apenas quando a pessoa interagir com a pergunta final
+# Exibe o gráfico corrigido e alinhado
 if st.session_state.votou_final:
     st.write("---")
     st.subheader("📊 Resultado da Pesquisa da Apresentação")
     
-    fig, ax = plt.subplots(figsize=(6, 3.5))
+    fig, ax = plt.subplots(figsize=(6, 4))
     fig.patch.set_facecolor('#0E1117')
     ax.set_facecolor('#161B22')
     
@@ -249,25 +250,34 @@ if st.session_state.votou_final:
     votos = [st.session_state.votos_sim, st.session_state.votos_nao]
     cores = ['#00FFA3', '#1F6FEB']
     
-    barras = ax.bar(categorias, votos, color=cores, width=0.45, edgecolor='#30363D')
+    barras = ax.bar(categorias, votos, color=cores, width=0.4, edgecolor='#30363D')
     
     ax.set_ylabel('Total de Votos', color='white', fontsize=10)
     ax.tick_params(colors='white', labelsize=10)
+    
+    # Força o eixo Y a usar apenas números inteiros (0, 1, 2, etc.)
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_color('#30363D')
     ax.spines['bottom'].set_color('#30363D')
     ax.grid(axis='y', linestyle='--', alpha=0.2, color='white')
     
-    # Adiciona os números exatos em cima de cada barra
+    # Adiciona os números exatos em cima de cada barra de forma legível
+    max_voto = max(votos) if max(votos) > 0 else 1
+    ax.set_ylim(0, max_voto + 1.5)
+    
     for barra in barras:
         altura = barra.get_height()
-        ax.annotate(f'{altura}',
+        ax.annotate(f'{int(altura)}',
                     xy=(barra.get_x() + barra.get_width() / 2, altura),
-                    xytext=(0, 3),  # 3 pontos de deslocamento vertical
+                    xytext=(0, 5),
                     textcoords="offset points",
-                    ha='center', va='bottom', color='white', fontweight='bold', fontsize=11)
+                    ha='center', va='bottom', color='white', fontweight='bold', fontsize=12)
 
+    plt.xticks(color='white', fontsize=10)
+    plt.tight_layout()
     st.pyplot(fig)
 
 # Efeito sonoro na resposta da IA
