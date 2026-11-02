@@ -140,7 +140,7 @@ if "votos" not in st.session_state:
     st.session_state.votos = {
         "Vai substituir": 0,
         "Vai ajudar": 0,
-        "Vai trabalhar\njunto": 0,
+        "Vai trabalhar junto": 0,
         "Ainda não sei": 0
     }
 
@@ -180,14 +180,13 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    # Mapeamento exato dos votos
     voto_categoria = None
     if "substituir" in pergunta_clean:
         voto_categoria = "Vai substituir"
     elif "ajudar" in pergunta_clean:
         voto_categoria = "Vai ajudar"
     elif "junto" in pergunta_clean or "trabalhar" in pergunta_clean:
-        voto_categoria = "Vai trabalhar\njunto"
+        voto_categoria = "Vai trabalhar junto"
     elif "sei" in pergunta_clean or "não sei" in pergunta_clean or "nao sei" in pergunta_clean:
         voto_categoria = "Ainda não sei"
 
@@ -198,9 +197,8 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         st.session_state.votos[voto_categoria] += 1
         st.session_state.votou_final = True
         
-        texto_exibicao = voto_categoria.replace("\n", " ")
         resposta_texto = (
-            f"Você votou: **{texto_exibicao}**! Obrigado pela participação. "
+            f"Você votou: **{voto_categoria}**! Obrigado pela participação. "
             "A IA já automatiza tarefas operacionais e repetitivas, "
             "mas o cenário mais provável é o de **colaboração e evolução do trabalho**. "
             "Enquanto a IA lida com processamento de dados e velocidade, os humanos continuam indispensáveis para **criatividade, empatia, pensamento crítico e decisões éticas**."
@@ -274,25 +272,30 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta("Ainda não sei")
                         st.rerun()
 
-# Exibe o gráfico estático e profissional com rótulos bem formatados
+# Exibe o gráfico estático e a legenda colorida logo abaixo
 if st.session_state.votou_final:
     st.write("---")
     st.subheader("📊 Resultado da Pesquisa da Apresentação")
     
-    fig, ax = plt.subplots(figsize=(6.5, 4.2))
+    fig, ax = plt.subplots(figsize=(6, 3.8))
     fig.patch.set_facecolor('#0E1117')
     ax.set_facecolor('#161B22')
     
-    categorias = list(st.session_state.votos.keys())
+    # Índices numéricos para as barras (1, 2, 3, 4) para ficar super limpo
+    indices = [1, 2, 3, 4]
     votos = list(st.session_state.votos.values())
     cores = ['#FF5B5B', '#00FFA3', '#1F6FEB', '#FFD166']
     
-    barras = ax.bar(categorias, votos, color=cores, width=0.5, edgecolor='#30363D')
+    barras = ax.bar(indices, votos, color=cores, width=0.5, edgecolor='#30363D')
     
     ax.set_ylabel('Total de Votos', color='white', fontsize=10)
-    ax.tick_params(colors='white', labelsize=8.5)
+    ax.tick_params(colors='white', labelsize=10)
     
-    # Eixo Y apenas com inteiros (0, 1, 2, 3...)
+    # Oculta os nomes longos do eixo X para focar apenas nas colunas numéricas
+    ax.set_xticks(indices)
+    ax.set_xticklabels(['1', '2', '3', '4'], color='white', fontweight='bold', fontsize=11)
+    
+    # Eixo Y apenas com inteiros
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     
     ax.spines['top'].set_visible(False)
@@ -312,9 +315,17 @@ if st.session_state.votou_final:
                     textcoords="offset points",
                     ha='center', va='bottom', color='white', fontweight='bold', fontsize=11)
 
-    plt.xticks(color='white', fontsize=8.5, rotation=0)
     plt.tight_layout()
     st.pyplot(fig)
+    
+    # Legenda limpa em texto com emojis coloridos logo abaixo
+    st.markdown("""
+        **Legenda das colunas:**
+        * 🔴 **Coluna 1:** Vai substituir
+        * 🟢 **Coluna 2:** Vai ajudar
+        * 🔵 **Coluna 3:** Vai trabalhar junto
+        * 🟡 **Coluna 4:** Ainda não sei
+    """)
 
 # Efeito sonoro na resposta da IA
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
