@@ -198,13 +198,12 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
         st.session_state.votou_final = True
         
         resposta_texto = (
-            f"Você votou: **{voto_categoria}**! Obrigado pela participação. "
+            f"✅ Voto registrado com sucesso em: **{voto_categoria}**! "
             "A IA já automatiza tarefas operacionais e repetitivas, "
-            "mas o cenário mais provável é o de **colaboração e evolução do trabalho**. "
-            "Enquanto a IA lida com processamento de dados e velocidade, os humanos continuam indispensáveis para **criatividade, empatia, pensamento crítico e decisões éticas**."
+            "mas o cenário mais provável é o de **colaboração e evolução do trabalho**."
         )
-        imagem_url = "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800"
-        opcoes_novas = []
+        imagem_url = None
+        opcoes_novas = opcoes_anteriores
     else:
         topico_encontrado_key = chave_topico
         
@@ -221,7 +220,7 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
             
             if len(opcoes_novas) == 0:
-                resposta_texto += "\n\n---\n🔥 **E afinal: IA vai substituir o homem? Escolha uma das opções abaixo ou digite sua opinião!**"
+                resposta_texto += "\n\n---\n🔥 **E afinal: IA vai substituir o homem? Escolha uma das opções abaixo para atualizar o gráfico!**"
         else:
             resposta_texto = perguntar_a_ia(pergunta_usuario)
             imagem_url = None
@@ -251,31 +250,34 @@ for i, message in enumerate(st.session_state.messages):
                     if st.button(label_botao, key=f"btn_{i}_{key}"):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
-            
-            if not opcoes and len(st.session_state.messages) > 1 and "E afinal" in message["content"]:
-                st.write("---")
-                st.caption("🗳️ **Escolha sua resposta para a pesquisa:**")
-                
-                col_v1, col_v2 = st.columns(2)
-                with col_v1:
-                    if st.button("🔴 Vai substituir", key="v_substituir"):
-                        processar_pergunta("Vai substituir")
-                        st.rerun()
-                    if st.button("🟢 Vai ajudar", key="v_ajudar"):
-                        processar_pergunta("Vai ajudar")
-                        st.rerun()
-                with col_v2:
-                    if st.button("🔵 Vai trabalhar junto", key="v_junto"):
-                        processar_pergunta("Vai trabalhar junto")
-                        st.rerun()
-                    if st.button("🟡 Ainda não sei", key="v_naosei"):
-                        processar_pergunta("Ainda não sei")
-                        st.rerun()
 
-# Exibe o gráfico estático e a legenda colorida logo abaixo
-if st.session_state.votou_final:
+# Se já houver votos ou o usuário chegou no final, exibe o painel de votação rápida e o gráfico sempre visível
+if st.session_state.votou_final or sum(st.session_state.votos.values()) > 0:
     st.write("---")
-    st.subheader("📊 Resultado da Pesquisa da Apresentação")
+    st.subheader("🗳️ Painel de Votação Rápida (Clique para votar instantaneamente)")
+    
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        if st.button("🔴 Vai substituir", key="v_substituir_direto"):
+            st.session_state.votos["Vai substituir"] += 1
+            st.session_state.votou_final = True
+            st.rerun()
+        if st.button("🟢 Vai ajudar", key="v_ajudar_direto"):
+            st.session_state.votos["Vai ajudar"] += 1
+            st.session_state.votou_final = True
+            st.rerun()
+    with col_v2:
+        if st.button("🔵 Vai trabalhar junto", key="v_junto_direto"):
+            st.session_state.votos["Vai trabalhar junto"] += 1
+            st.session_state.votou_final = True
+            st.rerun()
+        if st.button("🟡 Ainda não sei", key="v_naosei_direto"):
+            st.session_state.votos["Ainda não sei"] += 1
+            st.session_state.votou_final = True
+            st.rerun()
+
+    st.write("---")
+    st.subheader("📊 Resultado Atualizado da Apresentação")
     
     fig, ax = plt.subplots(figsize=(6, 3.8))
     fig.patch.set_facecolor('#0E1117')
@@ -293,7 +295,6 @@ if st.session_state.votou_final:
     ax.set_xticks(indices)
     ax.set_xticklabels(['1', '2', '3', '4'], color='white', fontweight='bold', fontsize=11)
     
-    # Eixo Y inteligente (se houver muitos votos, o passo ajusta-se automaticamente)
     max_voto = max(votos) if max(votos) > 0 else 1
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
     ax.set_ylim(0, max_voto + max(2, int(max_voto * 0.3)))
@@ -322,20 +323,6 @@ if st.session_state.votou_final:
         * 🔵 **Coluna 3:** Vai trabalhar junto
         * 🟡 **Coluna 4:** Ainda não sei
     """)
-    
-    st.write("")
-    # Botão rápido para a próxima pessoa votar sem precisar apagar a conversa toda
-    if st.button("➕ **Registrar Voto de Outra Pessoa**"):
-        st.session_state.messages = [
-            {
-                "role": "assistant",
-                "content": "Olá de novo! Vamos registrar o voto de mais um participante. Qual o seu palpite sobre a IA?",
-                "img": None,
-                "opcoes_restantes": list(TODOS_TOPICOS.keys())
-            }
-        ]
-        st.session_state.votou_final = False
-        st.rerun()
 
 # Efeito sonoro na resposta da IA
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
