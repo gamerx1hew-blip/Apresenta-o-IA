@@ -180,51 +180,26 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    voto_categoria = None
-    if "substituir" in pergunta_clean:
-        voto_categoria = "Vai substituir"
-    elif "ajudar" in pergunta_clean:
-        voto_categoria = "Vai ajudar"
-    elif "junto" in pergunta_clean or "trabalhar" in pergunta_clean:
-        voto_categoria = "Vai trabalhar junto"
-    elif "sei" in pergunta_clean or "não sei" in pergunta_clean or "nao sei" in pergunta_clean:
-        voto_categoria = "Ainda não sei"
+    topico_encontrado_key = chave_topico
+    
+    if not topico_encontrado_key:
+        for key, item in TODOS_TOPICOS.items():
+            if pergunta_clean in [g.lower() for g in item["gatilhos"]]:
+                topico_encontrado_key = key
+                break
 
-    if voto_categoria or any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
-        if not voto_categoria:
-            voto_categoria = "Ainda não sei"
-
-        st.session_state.votos[voto_categoria] += 1
-        st.session_state.votou_final = True
+    if topico_encontrado_key and topico_encontrado_key in TODOS_TOPICOS:
+        dados = TODOS_TOPICOS[topico_encontrado_key]
+        resposta_texto = dados["texto"]
+        imagem_url = dados["imagem"]
+        opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
         
-        resposta_texto = (
-            f"✅ Voto registrado com sucesso em: **{voto_categoria}**! "
-            "A IA já automatiza tarefas operacionais e repetitivas, "
-            "mas o cenário mais provável é o de **colaboração e evolução do trabalho**."
-        )
+        if len(opcoes_novas) == 0:
+            resposta_texto += "\n\n---\n🔥 **E afinal: IA vai substituir o homem? Veja os botões de votação logo abaixo!**"
+    else:
+        resposta_texto = perguntar_a_ia(pergunta_usuario)
         imagem_url = None
         opcoes_novas = opcoes_anteriores
-    else:
-        topico_encontrado_key = chave_topico
-        
-        if not topico_encontrado_key:
-            for key, item in TODOS_TOPICOS.items():
-                if pergunta_clean in [g.lower() for g in item["gatilhos"]]:
-                    topico_encontrado_key = key
-                    break
-
-        if topico_encontrado_key and topico_encontrado_key in TODOS_TOPICOS:
-            dados = TODOS_TOPICOS[topico_encontrado_key]
-            resposta_texto = dados["texto"]
-            imagem_url = dados["imagem"]
-            opcoes_novas = [k for k in opcoes_anteriores if k != topico_encontrado_key]
-            
-            if len(opcoes_novas) == 0:
-                resposta_texto += "\n\n---\n🔥 **E afinal: IA vai substituir o homem? Escolha uma das opções abaixo para atualizar o gráfico!**"
-        else:
-            resposta_texto = perguntar_a_ia(pergunta_usuario)
-            imagem_url = None
-            opcoes_novas = opcoes_anteriores
 
     st.session_state.messages.append({
         "role": "assistant",
@@ -251,78 +226,78 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta(label_botao, chave_topico=key)
                         st.rerun()
 
-# Se já houver votos ou o usuário chegou no final, exibe o painel de votação rápida e o gráfico sempre visível
-if st.session_state.votou_final or sum(st.session_state.votos.values()) > 0:
-    st.write("---")
-    st.subheader("🗳️ Painel de Votação Rápida (Clique para votar instantaneamente)")
-    
-    col_v1, col_v2 = st.columns(2)
-    with col_v1:
-        if st.button("🔴 Vai substituir", key="v_substituir_direto"):
-            st.session_state.votos["Vai substituir"] += 1
-            st.session_state.votou_final = True
-            st.rerun()
-        if st.button("🟢 Vai ajudar", key="v_ajudar_direto"):
-            st.session_state.votos["Vai ajudar"] += 1
-            st.session_state.votou_final = True
-            st.rerun()
-    with col_v2:
-        if st.button("🔵 Vai trabalhar junto", key="v_junto_direto"):
-            st.session_state.votos["Vai trabalhar junto"] += 1
-            st.session_state.votou_final = True
-            st.rerun()
-        if st.button("🟡 Ainda não sei", key="v_naosei_direto"):
-            st.session_state.votos["Ainda não sei"] += 1
-            st.session_state.votou_final = True
-            st.rerun()
+# Painel de votação rápida fixo (sempre disponível para qualquer pessoa clicar)
+st.write("---")
+st.subheader("🗳️ Painel de Votação (Clique para registrar seu voto)")
 
-    st.write("---")
-    st.subheader("📊 Resultado Atualizado da Apresentação")
-    
-    fig, ax = plt.subplots(figsize=(6, 3.8))
-    fig.patch.set_facecolor('#0E1117')
-    ax.set_facecolor('#161B22')
-    
-    indices = [1, 2, 3, 4]
-    votos = list(st.session_state.votos.values())
-    cores = ['#FF5B5B', '#00FFA3', '#1F6FEB', '#FFD166']
-    
-    barras = ax.bar(indices, votos, color=cores, width=0.5, edgecolor='#30363D')
-    
-    ax.set_ylabel('Total de Votos', color='white', fontsize=10)
-    ax.tick_params(colors='white', labelsize=10)
-    
-    ax.set_xticks(indices)
-    ax.set_xticklabels(['1', '2', '3', '4'], color='white', fontweight='bold', fontsize=11)
-    
-    max_voto = max(votos) if max(votos) > 0 else 1
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
-    ax.set_ylim(0, max_voto + max(2, int(max_voto * 0.3)))
-    
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_color('#30363D')
-    ax.spines['bottom'].set_color('#30363D')
-    ax.grid(axis='y', linestyle='--', alpha=0.2, color='white')
-    
-    for barra in barras:
-        altura = barra.get_height()
-        ax.annotate(f'{int(altura)}',
-                    xy=(barra.get_x() + barra.get_width() / 2, altura),
-                    xytext=(0, 5),
-                    textcoords="offset points",
-                    ha='center', va='bottom', color='white', fontweight='bold', fontsize=11)
+col_v1, col_v2 = st.columns(2)
+with col_v1:
+    if st.button("🔴 Vai substituir", key="v_substituir_direto"):
+        st.session_state.votos["Vai substituir"] += 1
+        st.session_state.votou_final = True
+        st.success("✅ Voto registrado em: Vai substituir!")
+    if st.button("🟢 Vai ajudar", key="v_ajudar_direto"):
+        st.session_state.votos["Vai ajudar"] += 1
+        st.session_state.votou_final = True
+        st.success("✅ Voto registrado em: Vai ajudar!")
+with col_v2:
+    if st.button("🔵 Vai trabalhar junto", key="v_junto_direto"):
+        st.session_state.votos["Vai trabalhar junto"] += 1
+        st.session_state.votou_final = True
+        st.success("✅ Voto registrado em: Vai trabalhar junto!")
+    if st.button("🟡 Ainda não sei", key="v_naosei_direto"):
+        st.session_state.votos["Ainda não sei"] += 1
+        st.session_state.votou_final = True
+        st.success("✅ Voto registrado em: Ainda não sei!")
 
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    st.markdown("""
-        **Legenda das colunas:**
-        * 🔴 **Coluna 1:** Vai substituir
-        * 🟢 **Coluna 2:** Vai ajudar
-        * 🔵 **Coluna 3:** Vai trabalhar junto
-        * 🟡 **Coluna 4:** Ainda não sei
-    """)
+# Exibe o gráfico atualizado em tempo real com os votos acumulados
+st.write("---")
+st.subheader("📊 Resultado Atualizado da Apresentação")
+
+fig, ax = plt.subplots(figsize=(6, 3.8))
+fig.patch.set_facecolor('#0E1117')
+ax.set_facecolor('#161B22')
+
+indices = [1, 2, 3, 4]
+votos = list(st.session_state.votos.values())
+cores = ['#FF5B5B', '#00FFA3', '#1F6FEB', '#FFD166']
+
+barras = ax.bar(indices, votos, color=cores, width=0.5, edgecolor='#30363D')
+
+ax.set_ylabel('Total de Votos', color='white', fontsize=10)
+ax.tick_params(colors='white', labelsize=10)
+
+ax.set_xticks(indices)
+ax.set_xticklabels(['1', '2', '3', '4'], color='white', fontweight='bold', fontsize=11)
+
+max_voto = max(votos) if max(votos) > 0 else 1
+ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
+ax.set_ylim(0, max_voto + max(2, int(max_voto * 0.3)))
+
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_color('#30363D')
+ax.spines['bottom'].set_color('#30363D')
+ax.grid(axis='y', linestyle='--', alpha=0.2, color='white')
+
+for barra in barras:
+    altura = barra.get_height()
+    ax.annotate(f'{int(altura)}',
+                xy=(barra.get_x() + barra.get_width() / 2, altura),
+                xytext=(0, 5),
+                textcoords="offset points",
+                ha='center', va='bottom', color='white', fontweight='bold', fontsize=11)
+
+plt.tight_layout()
+st.pyplot(fig)
+
+st.markdown("""
+    **Legenda das colunas:**
+    * 🔴 **Coluna 1:** Vai substituir
+    * 🟢 **Coluna 2:** Vai ajudar
+    * 🔵 **Coluna 3:** Vai trabalhar junto
+    * 🟡 **Coluna 4:** Ainda não sei
+""")
 
 # Efeito sonoro na resposta da IA
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
