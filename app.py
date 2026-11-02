@@ -1,19 +1,14 @@
 import os
 import streamlit as st
 import streamlit.components.v1 as components
-import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from google import genai
-from streamlit_gsheets import GSheetsConnection
 
 st.set_page_config(page_title="Assistente Inteligente", page_icon="🤖", layout="centered")
 
 # Procura a chave nos Secrets do Streamlit ou variáveis de ambiente
 api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
-
-# URL da Planilha no Google Sheets
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/17nRiQ8C4G0Jm58WibjkS5FXW2S6NOCFkPjKPwRR3Oj0/edit"
 
 def tocar_som_notificacao():
     js_code = """
@@ -140,30 +135,17 @@ if "messages" not in st.session_state:
         }
     ]
 
+# Dicionário de contagem mantido na memória da sessão
+if "votos" not in st.session_state:
+    st.session_state.votos = {
+        "Vai substituir": 0,
+        "Vai ajudar": 0,
+        "Vai trabalhar\njunto": 0,
+        "Ainda não sei": 0
+    }
+
 if "votou_final" not in st.session_state:
     st.session_state.votou_final = False
-
-# Conexão com o Google Sheets para ler e atualizar os votos em tempo real
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-def ler_votos_planilha():
-    try:
-        df = conn.read(spreadsheet=SPREADSHEET_URL, usecols=[0, 1])
-        df = df.dropna()
-        votos_dict = dict(zip(df.iloc[:, 0], pd.to_numeric(df.iloc[:, 1], errors='coerce').fillna(0)))
-        return votos_dict
-    except Exception:
-        return {"Vai substituir": 0, "Vai ajudar": 0, "Vai trabalhar junto": 0, "Ainda não sei": 0}
-
-def salvar_voto_planilha(categoria_escolhida):
-    try:
-        df = conn.read(spreadsheet=SPREADSHEET_URL, usecols=[0, 1])
-        df = df.dropna()
-        # Incrementa o voto na categoria correspondente
-        df.loc[df.iloc[:, 0] == categoria_escolhida, df.columns[1]] += 1
-        conn.update(spreadsheet=SPREADSHEET_URL, data=df)
-    except Exception as e:
-        st.error(f"Erro ao salvar na planilha: {e}")
 
 def perguntar_a_ia(prompt_usuario):
     if not api_key:
@@ -198,30 +180,27 @@ def processar_pergunta(pergunta_usuario, chave_topico=None):
             opcoes_anteriores = m["opcoes_restantes"].copy()
             break
 
-    voto_encontrado = None
-    categorias_validas = ["Vai substituir", "Vai ajudar", "Vai trabalhar junto", "Ainda não sei"]
-    for categoria in categorias_validas:
-        if categoria.lower() in pergunta_clean or pergunta_clean in categoria.lower():
-            voto_encontrado = categoria
-            break
+    # Mapeamento exato dos votos
+    voto_categoria = None
+    if "substituir" in pergunta_clean:
+        voto_categoria = "Vai substituir"
+    elif "ajudar" in pergunta_clean:
+        voto_categoria = "Vai ajudar"
+    elif "junto" in pergunta_clean or "trabalhar" in pergunta_clean:
+        voto_categoria = "Vai trabalhar\njunto"
+    elif "sei" in pergunta_clean or "não sei" in pergunta_clean or "nao sei" in pergunta_clean:
+        voto_categoria = "Ainda não sei"
 
-    if voto_encontrado or any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
-        if not voto_encontrado:
-            if "sim" in pergunta_clean or "substituir" in pergunta_clean:
-                voto_encontrado = "Vai substituir"
-            elif "ajud" in pergunta_clean:
-                voto_encontrado = "Vai ajudar"
-            elif "trabalhar junto" in pergunta_clean or "junto" in pergunta_clean:
-                voto_encontrado = "Vai trabalhar junto"
-            else:
-                voto_encontrado = "Ainda não sei"
+    if voto_categoria or any(p in pergunta_clean for p in ["substituir", "humano", "emprego", "trabalho", "sim", "não", "nao", "acho", "depende", "concordo", "talvez"]):
+        if not voto_categoria:
+            voto_categoria = "Ainda não sei"
 
-        # Salva o voto direto na nuvem (Google Sheets)
-        salvar_voto_planilha(voto_encontrado)
+        st.session_state.votos[voto_categoria] += 1
         st.session_state.votou_final = True
         
+        texto_exibicao = voto_categoria.replace("\n", " ")
         resposta_texto = (
-            f"Você votou: **{voto_encontrado}**! Obrigado pela participação. "
+            f"Você votou: **{texto_exibicao}**! Obrigado pela participação. "
             "A IA já automatiza tarefas operacionais e repetitivas, "
             "mas o cenário mais provável é o de **colaboração e evolução do trabalho**. "
             "Enquanto a IA lida com processamento de dados e velocidade, os humanos continuam indispensáveis para **criatividade, empatia, pensamento crítico e decisões éticas**."
@@ -295,26 +274,25 @@ for i, message in enumerate(st.session_state.messages):
                         processar_pergunta("Ainda não sei")
                         st.rerun()
 
-# Exibe o gráfico acumulado buscando os dados direto da planilha
+# Exibe o gráfico estático e profissional com rótulos bem formatados
 if st.session_state.votou_final:
     st.write("---")
-    st.subheader("📊 Resultado Geral da Apresentação")
+    st.subheader("📊 Resultado da Pesquisa da Apresentação")
     
-    dados_votos = ler_votos_planilha()
-    
-    fig, ax = plt.subplots(figsize=(7, 4.5))
+    fig, ax = plt.subplots(figsize=(6.5, 4.2))
     fig.patch.set_facecolor('#0E1117')
     ax.set_facecolor('#161B22')
     
-    categorias = list(dados_votos.keys())
-    votos = list(dados_votos.values())
+    categorias = list(st.session_state.votos.keys())
+    votos = list(st.session_state.votos.values())
     cores = ['#FF5B5B', '#00FFA3', '#1F6FEB', '#FFD166']
     
-    barras = ax.bar(categorias, votos, color=cores, width=0.45, edgecolor='#30363D')
+    barras = ax.bar(categorias, votos, color=cores, width=0.5, edgecolor='#30363D')
     
     ax.set_ylabel('Total de Votos', color='white', fontsize=10)
     ax.tick_params(colors='white', labelsize=8.5)
     
+    # Eixo Y apenas com inteiros (0, 1, 2, 3...)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     
     ax.spines['top'].set_visible(False)
